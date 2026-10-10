@@ -66,6 +66,10 @@ the fixture server.
   raises one counter by one on the article, and by the same amount on the front page, which shows it on going back
   without a reload.
 
+- Links. The front page's "Link + message" teaser (it posts `openArticle` *and* follows its link) opens exactly one
+  article screen. The "Syndication partner" link opens the browser, and so does the article's "Tide tables" link
+  (`target="_blank"`) once. "Jump" and the contents links still scroll in place with no spinner.
+
 **Not yet verified on iOS.** This changes when the iPad runs the app.
 
 **Differences between the platforms:**
