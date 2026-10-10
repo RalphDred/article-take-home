@@ -40,6 +40,10 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
           return;
         case 'height':
           return;
+        case 'app:anchor':
+          // Only sent where the page does not scroll itself. An article scrolls itself, so its anchors just work.
+          console.warn(`[article] ignored app:anchor for #${message.id}`);
+          return;
         default:
           assertNever(message, 'page message');
       }

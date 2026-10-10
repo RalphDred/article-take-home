@@ -38,6 +38,14 @@ routing). The screens only decide the layout around it.
   `.container`, not the viewport, so it does not loop by itself. A load starts from the last reported height, saved
   across launches, so a reload does not move the footer or the scroll position. While loading, the spinner sits in
   the visible part of that tall frame; on the error state the frame shrinks to the visible area.
+- **"Jump to" links (protocol gap).** The front page cannot scroll, so a `#section` link there has nothing to move,
+  and the protocol has no message for "scroll the app to here". Workaround: on a web view that does not scroll, the
+  app injects a script (`NATIVE_ANCHOR_SCRIPT` in `src/web/injected.ts`) that takes over taps on `#section` links
+  (and catches `hashchange` from scripts), measures the target element and posts a private
+  `{ type: 'app:anchor', id, top }`. The app scrolls the native view to strip height + `top`, never past the end
+  (`src/web/anchorScroll.ts`). It depends on the page's DOM and on links being plain `<a href="#id">`. **Proposal:**
+  a protocol message from the page, e.g. `{ type: 'scrollTo', top }` in CSS pixels, sent by the page's own anchor
+  handling whenever it runs inside the app.
 - **Recently read titles:** the protocol only carries ids, so the strip asks `/bundle/<id>/manifest.json` (the one
   endpoint that names an article) and caches the title. Until it arrives the card says "Article <id>".
 
@@ -82,6 +90,10 @@ the fixture server.
 - Links. The front page's "Link + message" teaser (it posts `openArticle` *and* follows its link) opens exactly one
   article screen. The "Syndication partner" link opens the browser, and so does the article's "Tide tables" link
   (`target="_blank"`) once. "Jump" and the contents links still scroll in place with no spinner.
+
+- Front page "Jump to" links (Android emulator, Pixel 8, Android 16): "More stories" puts its heading at the top of
+  the visible area, "Test pages" stops at the end of the scroll view with the footer in view, no spinner either way.
+  Not yet checked with the Recently read strip showing (nothing is marked read before Phase 8).
 
 **Not yet verified on iOS.** This changes when the iPad runs the app.
 

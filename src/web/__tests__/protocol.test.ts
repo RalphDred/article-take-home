@@ -40,6 +40,17 @@ describe('parseInbound', () => {
       });
     });
 
+    it("parses the app's own anchor message, and rejects one without a position", () => {
+      expect(parseInbound(json({ type: 'app:anchor', id: 'more-stories', top: 1210.5 }))).toEqual({
+        kind: 'page',
+        message: { type: 'app:anchor', id: 'more-stories', top: 1210.5 },
+      });
+      expect(parseInbound(json({ type: 'app:anchor', id: 'more-stories' }))).toMatchObject({
+        kind: 'ignored',
+        reason: 'invalid-fields',
+      });
+    });
+
     it('drops unknown fields from protocol messages', () => {
       expect(parseInbound(json({ type: 'height', value: 10, extra: true }))).toEqual({
         kind: 'page',

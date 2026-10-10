@@ -9,6 +9,7 @@ import { recentlyRead, useAppState } from '../state/appState';
 import { useFrontCache } from '../state/frontCache';
 import { paletteOf } from '../ui/palette';
 import { assertNever } from '../util/assertNever';
+import { anchorScrollY } from '../web/anchorScroll';
 import type { LoadState } from '../web/loadState';
 import { nextPageHeight } from '../web/pageHeight';
 import { type PageEvent, PageWebView, type PageWebViewHandle } from '../web/PageWebView';
@@ -24,10 +25,14 @@ const MIN_STATUS_AREA = 240;
  *
  * The page's height comes from its `height` messages (`nextPageHeight`). A load starts from the last height the page
  * reported, saved across launches, so the footer and the scroll position do not jump while the page loads again.
+ *
+ * The "Jump to" links scroll this scroll view: the page reports where the heading is (`app:anchor`), and the heading
+ * goes to the top of the visible area (`anchorScrollY`).
  */
 export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
   const { openArticle, openUrl, openArticleMessage } = useOpenLinks();
   const page = useRef<PageWebViewHandle>(null);
+  const scrollView = useRef<ScrollView>(null);
 
   const theme = useAppState(state => state.theme);
   const readIds = useAppState(state => state.readIds);
@@ -52,6 +57,7 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
   const [viewportHeight, setViewportHeight] = useState(0);
   const [measuredStripHeight, setStripHeight] = useState(0);
   const stripHeight = recent.length === 0 ? 0 : measuredStripHeight;
+  const contentHeight = useRef(0);
 
   const applyHeight = useCallback((reported: number) => {
     const next = nextPageHeight(appliedHeight.current, reported);
@@ -102,6 +108,12 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
         case 'openArticle':
           openArticleMessage(message.path);
           return;
+        case 'app:anchor': {
+          // The web view sits directly below the strip.
+          const layout = { pageTop: stripHeight, contentHeight: contentHeight.current, viewportHeight };
+          scrollView.current?.scrollTo({ y: anchorScrollY(message.top, layout), animated: true });
+          return;
+        }
         case 'toggleBookmark':
           // Only articles have a bookmark button.
           console.warn(`[front] ignored toggleBookmark for ${message.articleId}`);
@@ -110,15 +122,19 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
           assertNever(message, 'page message');
       }
     },
-    [applyHeight, openArticleMessage],
+    [applyHeight, openArticleMessage, stripHeight, viewportHeight],
   );
 
   const openRecent = useCallback((articleId: string) => openArticle(`/article/${articleId}?ref=recently-read`), [openArticle]);
 
   return (
     <ScrollView
+      ref={scrollView}
       style={{ backgroundColor: palette.background }}
       onLayout={(event: LayoutChangeEvent) => setViewportHeight(event.nativeEvent.layout.height)}
+      onContentSizeChange={(_width, height) => {
+        contentHeight.current = height;
+      }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <RecentlyReadStrip

@@ -46,6 +46,16 @@ const pageMessageSchema = z.discriminatedUnion('type', [
     // A path on the server, possibly with a query string. Where it leads is decided by the link router.
     path: z.string().startsWith('/'),
   }),
+  // Not part of the web team's protocol: posted by the app's own script (`injected.ts`) on a page that does not
+  // scroll itself, when the reader jumps to an in-page anchor. The protocol has no way for a page to ask the app to
+  // scroll (NOTES.md). Untrusted all the same: any script on the page could post it.
+  z.object({
+    type: z.literal('app:anchor'),
+    /** The anchor's element id, for logs. */
+    id: z.string().min(1),
+    /** CSS pixels from the top of the document to the top of the element. */
+    top: z.number().nonnegative(),
+  }),
 ]);
 
 export type PageMessage = z.infer<typeof pageMessageSchema>;
@@ -56,6 +66,7 @@ const PAGE_MESSAGE_TYPES: ReadonlySet<string> = new Set<PageMessageType>([
   'height',
   'toggleBookmark',
   'openArticle',
+  'app:anchor',
 ]);
 
 // The web tracker's messages carry `command` instead of `type`. Only the commands the SDK understands are kept, with

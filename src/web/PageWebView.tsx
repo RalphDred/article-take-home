@@ -40,7 +40,10 @@ type Props = {
   onLeavePage: (url: string) => void;
   /** Each new load state: a new load, ready, or an error. */
   onLoadStateChange?: (state: LoadState) => void;
-  /** False for the front page: it is as tall as its content, and the native scroll view scrolls it. */
+  /**
+   * False for the front page: it is as tall as its content, and the native scroll view scrolls it. In-page anchors
+   * then arrive as `app:anchor` messages for the caller to scroll to.
+   */
   scrollEnabled?: boolean;
   /**
    * How much of the web view, from its top, the loading and error states cover. All of it by default. The front
@@ -216,9 +219,13 @@ export function PageWebView({
     handlers.current.onLeavePage(event.nativeEvent.targetUrl);
   }, []);
 
+  // A page that does not scroll itself reports its in-page anchors (`app:anchor`) for the native scroll view.
   const injected = useMemo(
-    () => beforeContentScript(insets ? { appContext: APP_CONTEXT, appInsets: insets } : { appContext: APP_CONTEXT }),
-    [insets],
+    () =>
+      beforeContentScript(insets ? { appContext: APP_CONTEXT, appInsets: insets } : { appContext: APP_CONTEXT }, {
+        nativeAnchors: !scrollEnabled,
+      }),
+    [insets, scrollEnabled],
   );
 
   // Android: the document with the script written into it (see `injected.ts`). iOS: the URL itself.
