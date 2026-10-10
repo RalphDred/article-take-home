@@ -19,7 +19,7 @@ export type OpenLinks = {
 
 /**
  * The one place a screen turns links and `openArticle` into navigation. Both ways into an article go through the same
- * gate, so the "Link + message" teaser pushes exactly one screen (Q6).
+ * gate, so the "Link + message" teaser pushes exactly one screen (README, "Links").
  */
 export function useOpenLinks(): OpenLinks {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();

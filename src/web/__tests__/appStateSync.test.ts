@@ -84,7 +84,8 @@ describe('startAppStateSync', () => {
     expect(page.received).toHaveLength(3);
   });
 
-  // Plan Q7: an article is open and ready; back, change the theme on the front page, open the same article again.
+  // README, "App state on the pages": an article is open and ready; back, change the theme on the front page, open
+  // the same article again.
   it('gives each page exactly one theme event when the theme changes between two openings of an article', () => {
     const { store, open } = setup();
     const front = open('front');

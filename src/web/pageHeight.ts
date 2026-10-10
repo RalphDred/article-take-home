@@ -1,4 +1,4 @@
-// How tall the front page's web view is (README, "Front page screen"; PLAN Q4).
+// How tall the front page's web view is (README, "Front page screen").
 //
 // The page reports the height of its content with `height` messages, and the web view is made exactly that tall so
 // the native scroll view does all the scrolling. A resize can never feed back into itself: an identical height is

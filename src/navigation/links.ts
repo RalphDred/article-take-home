@@ -31,7 +31,7 @@ export function routeOf(url: string): LinkRoute {
   return path === null ? { kind: 'external', url } : { kind: 'article', path };
 }
 
-/** A second open of the same article within this long is the same tap arriving twice (Q6). */
+/** A second open of the same article within this long is the same tap arriving twice (README, "Links"). */
 export const REPEAT_OPEN_WINDOW_MS = 1_000;
 
 /**

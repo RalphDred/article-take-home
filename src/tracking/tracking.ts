@@ -1,4 +1,4 @@
-// How events reach the collector (README, "Tracking"; PLAN Q10).
+// How events reach the collector (README, "Tracking").
 //
 // One tracker, `news-app`, created through the vendor SDK only once `/consent` has answered with a consent string.
 // Before that, nothing may reach the collector, but nothing may be lost either: the app's own events and the pages'

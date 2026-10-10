@@ -1,4 +1,4 @@
-// The reader's consent (README, "The reader's consent"; PLAN Q9 and Q11).
+// The reader's consent (README, "The reader's consent").
 //
 // The app asks `GET /consent` at launch and on each return to the foreground. An answer arrives after a delay nobody
 // can predict, or fails, or never comes. Pages wait for it, but for five seconds at most: after that they load without

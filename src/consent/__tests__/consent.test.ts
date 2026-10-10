@@ -1,5 +1,5 @@
-// Q15 test 1: the consent rule. The hardest rules to check by hand and the easiest to break: when a page may load,
-// with which URL, and when (exactly once) it reloads because consent arrived late.
+// The consent rule (README, "The reader's consent"). The hardest rules to check by hand and the easiest to break:
+// when a page may load, with which URL, and when (exactly once) it reloads because consent arrived late.
 
 import { initialLoadState, type LoadEvent, loadReducer, type LoadState } from '../../web/loadState';
 import {
@@ -95,7 +95,7 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-describe('the five-second gate (Q9)', () => {
+describe('the five-second gate', () => {
   it('waits for an answer, and loads with the consent string when it comes in time', async () => {
     const app = launch();
 
@@ -164,7 +164,7 @@ describe('the five-second gate (Q9)', () => {
   });
 });
 
-describe('consent that arrives or changes later (Q11)', () => {
+describe('consent that arrives or changes later', () => {
   it('reloads a page loaded after a failure once, when the next foreground answers with a string', async () => {
     const app = launch(ARTICLE);
     app.fail(0);

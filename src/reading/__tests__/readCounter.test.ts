@@ -1,6 +1,6 @@
 import { createReadCounter } from '../readCounter';
 
-describe('createReadCounter (Q13: once per article screen)', () => {
+describe('createReadCounter (README, "Reading": once each time an article screen is opened)', () => {
   it('counts the first end of text on a screen, and nothing after it, a refresh included', () => {
     const reads: string[] = [];
     const screen = createReadCounter(id => reads.push(id));

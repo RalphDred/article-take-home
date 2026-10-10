@@ -1,5 +1,5 @@
-// Q15 test 3: the tracking buffer. A mistake here either loses events or sends them before consent, and neither shows
-// on the screen.
+// The tracking buffer (README, "Tracking"). A mistake here either loses events or sends them before consent, and
+// neither shows on the screen.
 
 import type { Tracker, TrackerConfig, WebViewMessage } from '../../../sdk/tracker';
 import { parseInbound, type TrackerCommand } from '../../web/protocol';

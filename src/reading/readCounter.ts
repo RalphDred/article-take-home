@@ -1,4 +1,4 @@
-// When an article counts as read (README, "Reading"; PLAN Q13).
+// When an article counts as read (README, "Reading").
 //
 // Once each time an article screen is opened, never twice for the same screen. A pull to refresh, a retry or a
 // rebuild after the content process died is the same screen: its new document may report the end of the text again,

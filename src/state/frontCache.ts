@@ -1,5 +1,6 @@
 // What the front screen remembers so it can draw itself before the server answers: the last height of the front
-// page (the starting height of the next load, PLAN Q4) and the titles of read articles (the Recently read strip).
+// page (the starting height of the next load, see `pageHeight.ts`) and the titles of read articles (the Recently
+// read strip).
 //
 // Unlike the app state, none of this belongs to the reader or reaches a page. Losing it costs a jump in the layout
 // or a placeholder title, nothing more, so a bad saved value is simply dropped.
