@@ -54,7 +54,15 @@ the fixture server.
 
 **Not yet verified on iOS.** This changes when the iPad runs the app.
 
-**Differences between the platforms:** _to do._
+**Differences between the platforms:**
+
+- **Globals before the page starts.** On Android, `react-native-webview` 13.16 (the version Expo Go ships) runs
+  `injectedJavaScriptBeforeContentLoaded` from `onPageStarted` with `evaluateJavascript`. That races the page's inline
+  scripts, and on the S24 it lost: the article's status box showed `insets 0 / 0 · at start: no`. The web tracker's
+  first page view would also have gone out without `appContext` (the control panel flags that). So on Android the app
+  fetches the document itself, writes the script first in `<head>`, and loads it as HTML with the page's URL as its
+  base (`useDocumentHtml.ts`). iOS keeps the URL load, where the script is a WKUserScript at document start. With a
+  development build, a newer web view or `WebViewCompat.addDocumentStartJavaScript` would make the fetch unnecessary.
 
 ## What I left out, and known bugs
 

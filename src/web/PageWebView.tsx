@@ -5,6 +5,7 @@ import type {
   ShouldStartLoadRequest,
   WebViewErrorEvent,
   WebViewHttpErrorEvent,
+  WebViewSource,
 } from 'react-native-webview/lib/WebViewTypes';
 
 import { APP_CONTEXT } from '../config';
@@ -12,6 +13,7 @@ import { assertNever } from '../util/assertNever';
 import { beforeContentScript } from './injected';
 import { type LoadFailure, sameDocument } from './loadState';
 import { type Insets, type PageKind, type PageMessage, parseInbound, PROTOCOL_VERSION, type TrackerCommand } from './protocol';
+import { LOADS_DOCUMENT_ITSELF, useDocumentHtml } from './useDocumentHtml';
 import { usePageLoad } from './usePageLoad';
 
 export type PageWebViewHandle = {
@@ -106,7 +108,7 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
   );
 
   // Only the main document reports here (both platforms filter subresources), and navigation away is blocked below,
-  // so a failure here is always the app-started load.
+  // so a failure here is always the app-started load. (On Android the fetch in `useDocumentHtml` reports instead.)
   const handleError = useCallback(
     (event: WebViewErrorEvent) => failWith({ kind: 'network', description: event.nativeEvent.description }),
     [failWith],
@@ -136,12 +138,23 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
     [insets],
   );
 
+  // Android: the document with the script written into it (see `injected.ts`). iOS: the URL itself.
+  // Memoized per load: Android reloads an HTML source on every new `source` object, even an identical one.
+  const documentHtml = useDocumentHtml(state, injected, fail);
+  const html = documentHtml !== null && documentHtml.loadId === loadId ? documentHtml.html : null;
+  const source = useMemo((): WebViewSource | null => {
+    if (documentUrl === null) return null;
+    if (!LOADS_DOCUMENT_ITSELF) return { uri: documentUrl };
+
+    return html === null ? null : { html, baseUrl: documentUrl };
+  }, [documentUrl, html]);
+
   return (
     <View style={[styles.container, style]}>
-      {state.status !== 'waitingForConsent' && (
+      {source !== null && state.status !== 'waitingForConsent' && (
         <WebView
           key={state.loadId}
-          source={{ uri: state.url }}
+          source={source}
           style={state.status === 'ready' ? styles.page : styles.hidden}
           originWhitelist={['*']}
           injectedJavaScriptBeforeContentLoaded={injected}
