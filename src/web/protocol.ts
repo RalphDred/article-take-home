@@ -127,6 +127,9 @@ export type AppEvents = {
 
 export type AppEventName = keyof AppEvents;
 
+/** One event with its name and detail bound together, as a value that can be collected and sent later. */
+export type AppEvent<K extends AppEventName = AppEventName> = { [N in K]: { name: N; detail: AppEvents[N] } }[K];
+
 /** Which pages listen to which event. */
 type EventAudience = {
   'app:fontScale': PageKind;
@@ -146,6 +149,9 @@ export function eventScript<K extends AppEventName>(name: K, detail: AppEvents[K
   // JSON is valid JavaScript (ES2019+), so the serialised values can be embedded as literals.
   return `window.dispatchEvent(new CustomEvent(${JSON.stringify(name)}, { detail: ${JSON.stringify(detail)} }));true;`;
 }
+
+/** `eventScript` for an event value. `AppEvent` already guarantees that the name and the detail belong together. */
+export const appEventScript = (event: AppEvent): string => eventScript<AppEventName>(event.name, event.detail);
 
 export type Dispatch<P extends PageKind> = <K extends keyof EventsFor<P> & AppEventName>(
   name: K,

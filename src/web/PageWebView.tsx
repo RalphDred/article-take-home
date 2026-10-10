@@ -13,6 +13,7 @@ import { assertNever } from '../util/assertNever';
 import { beforeContentScript } from './injected';
 import { type LoadFailure, sameDocument } from './loadState';
 import { type Insets, type PageKind, type PageMessage, parseInbound, PROTOCOL_VERSION, type TrackerCommand } from './protocol';
+import { useAppStateSync, useInsetsSync } from './useAppStateSync';
 import { LOADS_DOCUMENT_ITSELF, useDocumentHtml } from './useDocumentHtml';
 import { usePageLoad } from './usePageLoad';
 
@@ -48,14 +49,31 @@ type Props = {
  * Every app-started load mounts a new native web view (`key={loadId}`), so each load is a fresh document even when
  * only the URL's hash differs (the consent reload adds `#consent=...`), a failed first load can be retried on iOS,
  * and a late message from the previous document cannot reach the new load.
+ *
+ * App state reaches only the ready document (`useAppStateSync`). The web view is keyed on the load alone, never on
+ * app state, so a change of theme or font size is an event on the open page, not a reload.
  */
 export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrackerMessage, onLeavePage, style, ref }: Props) {
   const { state, reload, ready, fail } = usePageLoad(url);
 
-  useImperativeHandle(ref, () => ({ reload }), [reload]);
+  // The scroll position of the current document, and the one to restore after the content process was rebuilt.
+  const scrollY = useRef(0);
+  const restoreScrollY = useRef<number | null>(null);
+
+  // Pull to refresh starts over at the top. (Retry keeps the position: it may be retrying a rebuild.)
+  const reloadByReader = useCallback(() => {
+    restoreScrollY.current = null;
+    reload();
+  }, [reload]);
+
+  useImperativeHandle(ref, () => ({ reload: reloadByReader }), [reloadByReader]);
 
   const handlers = useRef({ onReady, onPageMessage, onTrackerMessage, onLeavePage });
   handlers.current = { onReady, onPageMessage, onTrackerMessage, onLeavePage };
+
+  // Only one native web view exists at a time (keyed on the load), so this is always the current document.
+  const webView = useRef<WebView>(null);
+  const inject = useCallback((script: string) => webView.current?.injectJavaScript(script), []);
 
   // Exactly once per load: the reducer moves to `ready` once per loadId, whatever the page sends.
   const readyLoadId = state.status === 'ready' ? state.loadId : null;
@@ -65,6 +83,38 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
 
   const loadId = state.status === 'waitingForConsent' ? null : state.loadId;
   const documentUrl = state.status === 'waitingForConsent' ? null : state.url;
+
+  useAppStateSync(page, readyLoadId, inject);
+  useInsetsSync(loadId, readyLoadId !== null, insets, inject);
+
+  // A new document starts at the top.
+  useEffect(() => {
+    scrollY.current = 0;
+  }, [loadId]);
+
+  // After the app state, which can change the layout (font size): back to where the reader was before the rebuild.
+  // Content that arrives after `ready` (photos, the ask box) can still move the text a little.
+  useEffect(() => {
+    if (readyLoadId === null) return;
+
+    const y = restoreScrollY.current;
+    restoreScrollY.current = null;
+    if (y !== null && y > 0) inject(`window.scrollTo(0, ${Math.round(y)});true;`);
+  }, [readyLoadId, inject]);
+
+  // Typed by the one field it reads: the library's own scroll event types disagree with each other.
+  const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
+    scrollY.current = event.nativeEvent.contentOffset.y;
+  }, []);
+
+  // The OS killed the page's content process (usually while the app was in the background). The native web view is
+  // blank and cannot be used again, so the page is loaded again in a new one: the loading state, the page's own
+  // `ready`, the app state sent again to the new document, then the old scroll position.
+  const rebuild = useCallback(() => {
+    console.warn(`[${page}] the web view's content process is gone, loading the page again`);
+    restoreScrollY.current = scrollY.current;
+    reload();
+  }, [page, reload]);
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -154,6 +204,7 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
       {source !== null && state.status !== 'waitingForConsent' && (
         <WebView
           key={state.loadId}
+          ref={webView}
           source={source}
           style={state.status === 'ready' ? styles.page : styles.hidden}
           originWhitelist={['*']}
@@ -162,6 +213,9 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
           onError={handleError}
           onHttpError={handleHttpError}
           onShouldStartLoadWithRequest={handleShouldStart}
+          onScroll={handleScroll}
+          onContentProcessDidTerminate={rebuild}
+          onRenderProcessGone={rebuild}
           // The error state below replaces the library's own error view, which would otherwise draw through it.
           renderError={renderNothing}
         />
