@@ -49,7 +49,17 @@ routing). The screens only decide the layout around it.
 - **Recently read titles:** the protocol only carries ids, so the strip asks `/bundle/<id>/manifest.json` (the one
   endpoint that names an article) and caches the title. Until it arrives the card says "Article <id>".
 
-_Article layout: to do (Phase 7)._
+- **Article:** the web view fills the screen and scrolls itself; a native header (back, A−/A+, light/dark, star)
+  floats over it, translucent. The page reserves the space itself: `window.appInsets` before it starts, `app:insets`
+  only if the insets change after `ready`. Top = safe area + the header's fixed 52 pt, bottom = safe area, rounded up
+  to whole CSS pixels. The title starts below the header, and the contents links and "Jump" land below it through
+  the page's own `scroll-margin-top`. A jump in the first two seconds can land a little off, because the late map
+  is still moving the text.
+- **Pull to refresh on the article** has to differ per platform. iOS has the web view's own refresh control, but it
+  calls the native `reload`, which the app did not start. That would give no loading state, and the new document's
+  `ready` would be ignored, so it would never get the app state. So `onShouldStartLoadWithRequest` turns any
+  `navigationType: 'reload'` into an app-started load. Android's web view has no refresh control, so a scroll view
+  that cannot scroll carries one, and it is switched on only while the page is at its top.
 
 ## Finding the end of the article text
 

@@ -7,6 +7,10 @@ export type Palette = {
   muted: string;
   rule: string;
   tint: string;
+  /** Buttons in the native headers (the pages' `--ink`). */
+  action: string;
+  /** The article's floating header. Translucent, so the page shows through as it scrolls underneath. */
+  chrome: string;
 };
 
 // The values of `body` and `body.dark` in the web team's pages.
@@ -17,6 +21,8 @@ const PALETTES: Record<Theme, Palette> = {
     muted: 'rgba(5, 5, 5, 0.57)',
     rule: 'rgb(222, 222, 222)',
     tint: 'rgb(245, 245, 245)',
+    action: 'rgb(44, 50, 189)',
+    chrome: 'rgba(255, 255, 255, 0.92)',
   },
   dark: {
     background: '#000000',
@@ -24,6 +30,8 @@ const PALETTES: Record<Theme, Palette> = {
     muted: 'rgba(255, 255, 255, 0.57)',
     rule: 'rgba(250, 250, 250, 0.21)',
     tint: 'rgba(250, 250, 250, 0.09)',
+    action: 'rgb(147, 151, 230)',
+    chrome: 'rgba(0, 0, 0, 0.88)',
   },
 };
 

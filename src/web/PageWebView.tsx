@@ -1,5 +1,16 @@
-import { type Ref, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { ActivityIndicator, Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { type Ref, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import type {
   ShouldStartLoadRequest,
@@ -46,6 +57,12 @@ type Props = {
    */
   scrollEnabled?: boolean;
   /**
+   * For a page that scrolls itself (the article): pulling down at its top reloads it, as an app-started load with the
+   * loading state. `refreshIndicatorOffset` moves Android's spinner below a header that floats over the page.
+   */
+  pullToRefresh?: boolean;
+  refreshIndicatorOffset?: number;
+  /**
    * How much of the web view, from its top, the loading and error states cover. All of it by default. The front
    * page is taller than the screen, so its states are drawn in the part the reader can see.
    */
@@ -76,6 +93,8 @@ export function PageWebView({
   onLeavePage,
   onLoadStateChange,
   scrollEnabled = true,
+  pullToRefresh = false,
+  refreshIndicatorOffset,
   statusAreaHeight,
   style,
   ref,
@@ -117,10 +136,23 @@ export function PageWebView({
   useAppStateSync(page, readyLoadId, inject);
   useInsetsSync(loadId, readyLoadId !== null, insets, inject);
 
+  // Whether the page is scrolled to its top, where a pull down reloads it (Android; see `refreshControl` below).
+  // State, because it switches the pull on and off, but only set when it flips, not on every scroll event.
+  const [atTop, setAtTop] = useState(true);
+  const atTopNow = useRef(true);
+  const trackTop = useCallback((y: number) => {
+    const top = y <= 0;
+    if (top === atTopNow.current) return;
+
+    atTopNow.current = top;
+    setAtTop(top);
+  }, []);
+
   // A new document starts at the top.
   useEffect(() => {
     scrollY.current = 0;
-  }, [loadId]);
+    trackTop(0);
+  }, [loadId, trackTop]);
 
   // After the app state, which can change the layout (font size): back to where the reader was before the rebuild.
   // Content that arrives after `ready` (photos, the ask box) can still move the text a little.
@@ -133,9 +165,25 @@ export function PageWebView({
   }, [readyLoadId, inject]);
 
   // Typed by the one field it reads: the library's own scroll event types disagree with each other.
-  const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
-    scrollY.current = event.nativeEvent.contentOffset.y;
-  }, []);
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      scrollY.current = event.nativeEvent.contentOffset.y;
+      trackTop(scrollY.current);
+    },
+    [trackTop],
+  );
+
+  // The pull's own spinner hands over to the loading state as soon as the new load starts. (It has to go back to
+  // `false` itself: a refresh control whose prop never changes keeps spinning.)
+  const [refreshing, setRefreshing] = useState(false);
+  useEffect(() => {
+    if (state.status !== 'ready') setRefreshing(false);
+  }, [state.status]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    reloadByReader();
+  }, [reloadByReader]);
 
   // The OS killed the page's content process (usually while the app was in the background). The native web view is
   // blank and cannot be used again, so the page is loaded again in a new one: the loading state, the page's own
@@ -203,6 +251,13 @@ export function PageWebView({
       if (documentUrl === null) return false;
       // iOS asks for subframes too; they do not move the page. (Android only asks for the top frame.)
       if (request.isTopFrame === false) return true;
+      // iOS: the web view reloading by itself (its own pull to refresh, or the page's `location.reload()`). That would
+      // be a new document the app did not start: no loading state, and its `ready` would be ignored as a second one
+      // for this load, so it would never get the app state. It becomes an app-started load instead.
+      if (request.navigationType === 'reload') {
+        reloadByReader();
+        return false;
+      }
       // The app-started load itself, and in-page `#hash` navigation.
       if (sameDocument(request.url, documentUrl)) return true;
 
@@ -210,7 +265,7 @@ export function PageWebView({
 
       return false;
     },
-    [documentUrl],
+    [documentUrl, reloadByReader],
   );
 
   // `target="_blank"` and `window.open`. Without this handler Android loads the link into an invisible second web view
@@ -242,28 +297,52 @@ export function PageWebView({
   const overlayStyle =
     statusAreaHeight === undefined ? styles.overlay : [styles.overlay, styles.overlayAtTop, { height: statusAreaHeight }];
 
+  const webViewElement = source !== null && state.status !== 'waitingForConsent' && (
+    <WebView
+      key={state.loadId}
+      ref={webView}
+      source={source}
+      style={state.status === 'ready' ? styles.page : styles.hidden}
+      originWhitelist={['*']}
+      injectedJavaScriptBeforeContentLoaded={injected}
+      onMessage={handleMessage}
+      onError={handleError}
+      onHttpError={handleHttpError}
+      onShouldStartLoadWithRequest={handleShouldStart}
+      onOpenWindow={handleOpenWindow}
+      scrollEnabled={scrollEnabled}
+      onScroll={handleScroll}
+      // iOS: the web view's own refresh control. Its reload is turned into an app-started load (`handleShouldStart`).
+      pullToRefreshEnabled={pullToRefresh}
+      onContentProcessDidTerminate={rebuild}
+      onRenderProcessGone={rebuild}
+      // The error state below replaces the library's own error view, which would otherwise draw through it.
+      renderError={renderNothing}
+    />
+  );
+
   return (
     <View style={[styles.container, style]}>
-      {source !== null && state.status !== 'waitingForConsent' && (
-        <WebView
-          key={state.loadId}
-          ref={webView}
-          source={source}
-          style={state.status === 'ready' ? styles.page : styles.hidden}
-          originWhitelist={['*']}
-          injectedJavaScriptBeforeContentLoaded={injected}
-          onMessage={handleMessage}
-          onError={handleError}
-          onHttpError={handleHttpError}
-          onShouldStartLoadWithRequest={handleShouldStart}
-          onOpenWindow={handleOpenWindow}
-          scrollEnabled={scrollEnabled}
-          onScroll={handleScroll}
-          onContentProcessDidTerminate={rebuild}
-          onRenderProcessGone={rebuild}
-          // The error state below replaces the library's own error view, which would otherwise draw through it.
-          renderError={renderNothing}
-        />
+      {pullToRefresh && Platform.OS === 'android' ? (
+        // Android's web view has no pull to refresh. A scroll view that cannot scroll itself carries the refresh
+        // control, switched on only while the page is at its top, so every other drag still scrolls the page.
+        <ScrollView
+          style={styles.page}
+          contentContainerStyle={styles.page}
+          scrollEnabled={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              enabled={atTop && state.status === 'ready'}
+              {...(refreshIndicatorOffset === undefined ? {} : { progressViewOffset: refreshIndicatorOffset })}
+            />
+          }
+        >
+          {webViewElement}
+        </ScrollView>
+      ) : (
+        webViewElement
       )}
       {state.status === 'error' ? (
         <View style={overlayStyle}>

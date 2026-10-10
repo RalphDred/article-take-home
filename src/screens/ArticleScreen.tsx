@@ -1,30 +1,36 @@
-import { useCallback, useLayoutEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ArticleControls } from '../components/ArticleControls';
+import { ARTICLE_HEADER_BAR_HEIGHT, ArticleHeader } from '../components/ArticleHeader';
 import { pageUrl } from '../config';
 import { articleIdOf } from '../navigation/links';
 import type { ScreenProps } from '../navigation/types';
 import { useOpenLinks } from '../navigation/useOpenLinks';
 import { useAppState } from '../state/appState';
+import { paletteOf } from '../ui/palette';
 import { assertNever } from '../util/assertNever';
 import { type PageEvent, PageWebView } from '../web/PageWebView';
 import type { Insets } from '../web/protocol';
 
-// Phase 3: the article sits below the stack's own header, which carries the controls. The floating header and its
-// insets come in Phase 7.
+/**
+ * The article fills the screen and scrolls itself. A native header floats over its top; the page reserves the space
+ * the header and the safe areas cover (`window.appInsets` before it starts, `app:insets` after), so its title starts
+ * just below the header, its anchors land below it, and its last line can be scrolled clear of the bottom edge.
+ */
 export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
   const { path } = route.params;
   const safeArea = useSafeAreaInsets();
+  const theme = useAppState(state => state.theme);
+  const palette = paletteOf(theme);
 
   const url = useMemo(() => pageUrl(path), [path]);
   const articleId = useMemo(() => articleIdOf(path), [path]);
-  const insets = useMemo<Insets>(() => ({ top: 0, bottom: safeArea.bottom }), [safeArea.bottom]);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerRight: () => <ArticleControls articleId={articleId} /> });
-  }, [navigation, articleId]);
+  const insets = useMemo<Insets>(
+    // Whole CSS pixels, rounded up so nothing hides under a fraction of the header.
+    () => ({ top: Math.ceil(safeArea.top + ARTICLE_HEADER_BAR_HEIGHT), bottom: Math.ceil(safeArea.bottom) }),
+    [safeArea.top, safeArea.bottom],
+  );
 
   const { openUrl, openArticleMessage } = useOpenLinks();
 
@@ -52,12 +58,28 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
   );
 
   return (
-    <View style={styles.screen}>
-      <PageWebView page="article" url={url} insets={insets} onLeavePage={openUrl} onPageMessage={handlePageMessage} />
+    <View style={[styles.screen, { backgroundColor: palette.background }]}>
+      <PageWebView
+        page="article"
+        url={url}
+        insets={insets}
+        pullToRefresh
+        refreshIndicatorOffset={insets.top}
+        onLeavePage={openUrl}
+        onPageMessage={handlePageMessage}
+      />
+      <ArticleHeader
+        articleId={articleId}
+        palette={palette}
+        safeTop={safeArea.top}
+        onBack={() => navigation.goBack()}
+        style={styles.header}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  header: { position: 'absolute', top: 0, left: 0, right: 0 },
 });

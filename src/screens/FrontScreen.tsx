@@ -39,16 +39,20 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
   const recent = useMemo(() => recentlyRead(readIds), [readIds]);
   const palette = paletteOf(theme);
 
-  // The header lives outside the page, so the Saved button works on the error state too.
+  // The header lives outside the page, so the Saved button works on the error state too. It follows the app's theme,
+  // like the article's header.
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerStyle: { backgroundColor: palette.background },
+      headerTintColor: palette.text,
+      headerShadowVisible: true,
       headerRight: () => (
         <Pressable accessibilityRole="button" hitSlop={8} onPress={showSavedPlaceholder}>
-          <Text style={styles.headerButton}>Saved</Text>
+          <Text style={[styles.headerButton, { color: palette.action }]}>Saved</Text>
         </Pressable>
       ),
     });
-  }, [navigation]);
+  }, [navigation, palette]);
 
   // --- Height -----------------------------------------------------------------------------------------------------
 
@@ -169,7 +173,7 @@ function showSavedPlaceholder() {
 }
 
 const styles = StyleSheet.create({
-  headerButton: { fontSize: 16, fontWeight: '600', color: '#2c32bd' },
+  headerButton: { fontSize: 16, fontWeight: '600' },
   footer: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40, borderTopWidth: StyleSheet.hairlineWidth, gap: 4 },
   footerTitle: { fontSize: 18, fontWeight: '700' },
   footerText: { fontSize: 13 },

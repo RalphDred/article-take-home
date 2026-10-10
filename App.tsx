@@ -7,7 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { RootStackParamList } from './src/navigation/types';
 import { ArticleScreen } from './src/screens/ArticleScreen';
 import { FrontScreen } from './src/screens/FrontScreen';
-import { hydrateAppState } from './src/state/appState';
+import { hydrateAppState, useAppState } from './src/state/appState';
 import { hydrateFrontCache } from './src/state/frontCache';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -27,10 +27,17 @@ export default function App() {
       <NavigationContainer>
         <Stack.Navigator>
           <Stack.Screen name="Front" component={FrontScreen} options={{ title: 'News' }} />
-          <Stack.Screen name="Article" component={ArticleScreen} options={{ title: '' }} />
+          <Stack.Screen name="Article" component={ArticleScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
-      <StatusBar style="auto" />
+      <ThemedStatusBar />
     </SafeAreaProvider>
   );
+}
+
+/** Both headers take the app's theme, so the status bar above them does too. */
+function ThemedStatusBar() {
+  const theme = useAppState(state => state.theme);
+
+  return <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />;
 }
