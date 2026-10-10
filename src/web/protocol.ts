@@ -11,6 +11,9 @@ export const PROTOCOL_VERSION = 1;
 export type PageKind = 'front' | 'article';
 export type Theme = 'light' | 'dark';
 
+/** CSS pixels covered by the app's own chrome at the top and bottom of an article. */
+export type Insets = { top: number; bottom: number };
+
 // ---------------------------------------------------------------------------------------------------------------
 // Page -> app
 
@@ -119,7 +122,7 @@ export type AppEvents = {
   'app:theme': { value: Theme };
   'app:bookmarks': { ids: readonly string[] };
   'app:read': { ids: readonly string[] };
-  'app:insets': { top: number; bottom: number };
+  'app:insets': Insets;
 };
 
 export type AppEventName = keyof AppEvents;

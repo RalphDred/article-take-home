@@ -8,7 +8,23 @@ _To do (Phase 10)._
 
 ## Loading state and the consent rule
 
-_To do (Phases 2 and 9)._
+Each web view has one state: `waitingForConsent → loading → ready | error` (`src/web/loadState.ts`, a pure reducer
+with tests). A union rather than `isLoading`/`hasError` flags, so impossible mixes (ready *and* failed) cannot be
+written, and every event says which load it belongs to (`loadId`). Events for an older load are dropped.
+
+- **Only the app starts loads** (first load, pull to refresh, Retry, later the consent reload). `onLoadStart` is not
+  used, so a `#hash` change (the "Jump" buttons) never shows the spinner. Navigation to another document is blocked
+  in `onShouldStartLoadWithRequest`, so the app is the only one that can change the document.
+- **Every load mounts a fresh native web view** (`key={loadId}`). A reload to a URL that differs only in its hash
+  (`/front` → `/front#consent=…`) would otherwise be an in-page jump, not a load; a failed first load on iOS has no URL
+  for `reload()` to repeat; and a message from the old document cannot be counted for the new one.
+- **The first `ready` per load** moves to `ready`; the "ready twice" page's second one is ignored, so app state is
+  sent once. No `ready` within 15 s ("never ready") → error with Retry. `onError` / `onHttpError` (server unreachable,
+  HTTP errors) → the same error state.
+- **Back online** (NetInfo reports offline, then online) while on the error state → retry by itself. Only that
+  transition retries: an unreachable server while the device is online would otherwise retry in a loop.
+
+_Consent: to do (Phase 9)._
 
 ## How the two page layouts share code
 

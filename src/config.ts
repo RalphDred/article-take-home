@@ -48,6 +48,8 @@ export const APP_CONTEXT = {
   deviceType: deviceType(),
 } as const;
 
+export type AppContext = typeof APP_CONTEXT;
+
 export const TRACKER_NAMESPACE = 'news-app';
 
 export const pageUrl = (path: string): string => `${SERVER_URL}${path.startsWith('/') ? path : `/${path}`}`;

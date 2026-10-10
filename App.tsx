@@ -1,34 +1,24 @@
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { APP_CONTEXT, pageUrl, SERVER_URL } from './src/config';
+import type { RootStackParamList } from './src/navigation/types';
+import { ArticleScreen } from './src/screens/ArticleScreen';
+import { FrontScreen } from './src/screens/FrontScreen';
 
-// Phase 0 spike: prove that /front renders in a web view on both platforms. Replaced by the real screens later.
-const BEFORE_CONTENT = `window.appContext = ${JSON.stringify(APP_CONTEXT)}; true;`;
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.caption}>{SERVER_URL}</Text>
-        <View style={styles.page}>
-          <WebView
-            source={{ uri: pageUrl('/front') }}
-            injectedJavaScriptBeforeContentLoaded={BEFORE_CONTENT}
-            onMessage={event => console.log('[page]', event.nativeEvent.data)}
-            onError={event => console.warn('[webview] error', event.nativeEvent.description)}
-          />
-        </View>
-        <StatusBar style="auto" />
-      </SafeAreaView>
+      <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Screen name="Front" component={FrontScreen} options={{ title: 'News' }} />
+          <Stack.Screen name="Article" component={ArticleScreen} options={{ title: '' }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+      <StatusBar style="auto" />
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  caption: { fontSize: 12, padding: 8, color: '#666' },
-  page: { flex: 1 },
-});
