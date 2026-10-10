@@ -149,6 +149,8 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
           onError={handleError}
           onHttpError={handleHttpError}
           onShouldStartLoadWithRequest={handleShouldStart}
+          // The error state below replaces the library's own error view, which would otherwise draw through it.
+          renderError={renderNothing}
         />
       )}
       {state.status === 'error' ? (
@@ -167,6 +169,8 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
     </View>
   );
 }
+
+const renderNothing = () => <View />;
 
 function describeFailure(failure: LoadFailure): string {
   switch (failure.kind) {
@@ -191,6 +195,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    // Opaque, so neither a half-loaded page nor the platform's error page shows through.
+    backgroundColor: '#f2f2f2',
     gap: 12,
   },
   title: { fontSize: 17, fontWeight: '600', textAlign: 'center' },
