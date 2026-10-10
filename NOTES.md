@@ -61,6 +61,11 @@ the fixture server.
   context. A first attempt on the S24 showed `at start: no` (see the platform differences below). The `app context`
   line alone did not prove it, because the status box draws after the page has started.
 
+- App state survives an app reload (bookmarks, theme, font scale), and a newly loaded page gets it once on `ready`:
+  each status box counter shows `applied ×1`, with `0 before ready`. After that, each tap on the article's controls
+  raises one counter by one on the article, and by the same amount on the front page, which shows it on going back
+  without a reload.
+
 **Not yet verified on iOS.** This changes when the iPad runs the app.
 
 **Differences between the platforms:**
@@ -82,7 +87,12 @@ the fixture server.
 
 ## Content process killed in the background
 
-_To do._
+_Draft, built but not yet verified on a device._ Without handling, the reader comes back to a blank page (iOS) or
+a crash (Android, if `onRenderProcessGone` is not handled). The web view now rebuilds itself on
+`onContentProcessDidTerminate` / `onRenderProcessGone`: a new app-started load (spinner, then the page's own `ready`),
+the app state sent again to the new document, then the last scroll position. The screens themselves, the stack and the
+app state are untouched, because they live in the app, not in the page. What is lost is the page's own state (an open
+"More" list, late content), so the restored position can be a little off.
 
 ## Where AI helped, and where it was corrected
 
