@@ -49,8 +49,17 @@ the fixture server.
 | Android | Samsung Galaxy S24 Ultra (SM-S928B), physical | Android 16, One UI 8.5 (build `BP4A.251205.006.S928BXXS6DZI1`) | Expo Go over Wi-Fi |
 | iOS | iPad | _not yet verified_ | Expo Go over Wi-Fi (planned) |
 
-**Verified so far on Android:** `/front` renders in the web view. The status box shows `ready sent ×1`, and
-`window.appContext` is set before the page's scripts run (`app context 1.0.0 · 1 · android · phone`).
+**Verified so far on Android:**
+
+- `/front` and the articles render in the web view. Each load shows the native spinner until `ready`.
+- Loading states from the control panel. "Slow" ends on the page. "Unreachable" ends on the error state with Retry,
+  and airplane mode off retries by itself. Article 4 ("never ready") ends on the error state after 15 s. Article 5
+  ("ready twice") is ready once in the app while its status box shows `ready sent ×2`. Article 6 ("ready after 3 s")
+  loads.
+- "Jump (script)" and the Contents links scroll inside the article with no spinner.
+- Globals before the page starts: the article's status box shows `insets 0 / 48 · at start: yes` and the app
+  context. A first attempt on the S24 showed `at start: no` (see the platform differences below). The `app context`
+  line alone did not prove it, because the status box draws after the page has started.
 
 **Not yet verified on iOS.** This changes when the iPad runs the app.
 
