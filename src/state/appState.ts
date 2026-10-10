@@ -51,6 +51,11 @@ export const toggledId = (ids: readonly string[], id: string): readonly string[]
 export const withMostRecent = (ids: readonly string[], id: string): readonly string[] =>
   ids[0] === id ? ids : [id, ...ids.filter(other => other !== id)];
 
+export const RECENTLY_READ_LIMIT = 5;
+
+/** The Recently read strip: the most recently read articles, most recent first. */
+export const recentlyRead = (readIds: readonly string[]): readonly string[] => readIds.slice(0, RECENTLY_READ_LIMIT);
+
 // ---------------------------------------------------------------------------------------------------------------
 
 export const defaultAppState = (): AppStateData => ({

@@ -12,7 +12,7 @@ import type {
 import { APP_CONTEXT } from '../config';
 import { assertNever } from '../util/assertNever';
 import { beforeContentScript } from './injected';
-import { type LoadFailure, sameDocument } from './loadState';
+import { type LoadFailure, type LoadState, sameDocument } from './loadState';
 import { type Insets, type PageKind, type PageMessage, parseInbound, PROTOCOL_VERSION, type TrackerCommand } from './protocol';
 import { useAppStateSync, useInsetsSync } from './useAppStateSync';
 import { LOADS_DOCUMENT_ITSELF, useDocumentHtml } from './useDocumentHtml';
@@ -38,6 +38,15 @@ type Props = {
   onTrackerMessage?: (raw: string, command: TrackerCommand) => void;
   /** The page tried to navigate to another document. The web view stays where it is; the caller decides. */
   onLeavePage: (url: string) => void;
+  /** Each new load state: a new load, ready, or an error. */
+  onLoadStateChange?: (state: LoadState) => void;
+  /** False for the front page: it is as tall as its content, and the native scroll view scrolls it. */
+  scrollEnabled?: boolean;
+  /**
+   * How much of the web view, from its top, the loading and error states cover. All of it by default. The front
+   * page is taller than the screen, so its states are drawn in the part the reader can see.
+   */
+  statusAreaHeight?: number;
   style?: StyleProp<ViewStyle>;
   ref?: Ref<PageWebViewHandle>;
 };
@@ -54,7 +63,20 @@ type Props = {
  * App state reaches only the ready document (`useAppStateSync`). The web view is keyed on the load alone, never on
  * app state, so a change of theme or font size is an event on the open page, not a reload.
  */
-export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrackerMessage, onLeavePage, style, ref }: Props) {
+export function PageWebView({
+  page,
+  url,
+  insets,
+  onReady,
+  onPageMessage,
+  onTrackerMessage,
+  onLeavePage,
+  onLoadStateChange,
+  scrollEnabled = true,
+  statusAreaHeight,
+  style,
+  ref,
+}: Props) {
   const { state, reload, ready, fail } = usePageLoad(url);
 
   // The scroll position of the current document, and the one to restore after the content process was rebuilt.
@@ -69,8 +91,12 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
 
   useImperativeHandle(ref, () => ({ reload: reloadByReader }), [reloadByReader]);
 
-  const handlers = useRef({ onReady, onPageMessage, onTrackerMessage, onLeavePage });
-  handlers.current = { onReady, onPageMessage, onTrackerMessage, onLeavePage };
+  const handlers = useRef({ onReady, onPageMessage, onTrackerMessage, onLeavePage, onLoadStateChange });
+  handlers.current = { onReady, onPageMessage, onTrackerMessage, onLeavePage, onLoadStateChange };
+
+  useEffect(() => {
+    handlers.current.onLoadStateChange?.(state);
+  }, [state]);
 
   // Only one native web view exists at a time (keyed on the load), so this is always the current document.
   const webView = useRef<WebView>(null);
@@ -206,6 +232,9 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
     return html === null ? null : { html, baseUrl: documentUrl };
   }, [documentUrl, html]);
 
+  const overlayStyle =
+    statusAreaHeight === undefined ? styles.overlay : [styles.overlay, styles.overlayAtTop, { height: statusAreaHeight }];
+
   return (
     <View style={[styles.container, style]}>
       {source !== null && state.status !== 'waitingForConsent' && (
@@ -221,6 +250,7 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
           onHttpError={handleHttpError}
           onShouldStartLoadWithRequest={handleShouldStart}
           onOpenWindow={handleOpenWindow}
+          scrollEnabled={scrollEnabled}
           onScroll={handleScroll}
           onContentProcessDidTerminate={rebuild}
           onRenderProcessGone={rebuild}
@@ -229,7 +259,7 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
         />
       )}
       {state.status === 'error' ? (
-        <View style={styles.overlay}>
+        <View style={overlayStyle}>
           <Text style={styles.title}>This page could not be loaded</Text>
           <Text style={styles.detail}>{describeFailure(state.failure)}</Text>
           <Pressable accessibilityRole="button" onPress={reload} style={styles.retry}>
@@ -237,7 +267,7 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
           </Pressable>
         </View>
       ) : state.status !== 'ready' ? (
-        <View style={styles.overlay}>
+        <View style={overlayStyle}>
           <ActivityIndicator size="large" />
         </View>
       ) : null}
@@ -274,6 +304,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f2f2f2',
     gap: 12,
   },
+  // Below the status area the web view is still hidden, so only the screen's background shows there.
+  overlayAtTop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: undefined },
   title: { fontSize: 17, fontWeight: '600', textAlign: 'center' },
   detail: { fontSize: 14, color: '#666', textAlign: 'center' },
   retry: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, backgroundColor: '#1a1a1a' },

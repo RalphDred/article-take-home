@@ -28,7 +28,20 @@ _Consent: to do (Phase 9)._
 
 ## How the two page layouts share code
 
-_To do (Phases 5 and 7)._
+Both screens use one `PageWebView` (load state machine, injected globals, message parsing, app state sync, link
+routing). The screens only decide the layout around it.
+
+- **Front page:** one native `ScrollView` with the Recently read strip, the web view and a footer. The web view does
+  not scroll (`scrollEnabled={false}`) and is exactly as tall as the page's `height` messages say. An identical height
+  is skipped, so a page that posts its height again after the resize cannot loop, and heights are capped at 50 000 px
+  with a warning, for a page sized by its own viewport (`src/web/pageHeight.ts`). The fixture measures its
+  `.container`, not the viewport, so it does not loop by itself. A load starts from the last reported height, saved
+  across launches, so a reload does not move the footer or the scroll position. While loading, the spinner sits in
+  the visible part of that tall frame; on the error state the frame shrinks to the visible area.
+- **Recently read titles:** the protocol only carries ids, so the strip asks `/bundle/<id>/manifest.json` (the one
+  endpoint that names an article) and caches the title. Until it arrives the card says "Article <id>".
+
+_Article layout: to do (Phase 7)._
 
 ## Finding the end of the article text
 

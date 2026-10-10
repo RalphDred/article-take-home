@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   FONT_SCALE,
   hydrateAppState,
+  recentlyRead,
   savedAppState,
   steppedFontScale,
   toggledId,
@@ -45,6 +46,11 @@ describe('id lists', () => {
     const ids = ['2', '1'];
 
     expect(withMostRecent(ids, '2')).toBe(ids);
+  });
+
+  it('lists at most five recently read articles, most recent first', () => {
+    expect(recentlyRead(['7', '6', '5', '4', '3', '2', '1'])).toEqual(['7', '6', '5', '4', '3']);
+    expect(recentlyRead([])).toEqual([]);
   });
 });
 

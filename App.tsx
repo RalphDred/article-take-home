@@ -8,14 +8,16 @@ import type { RootStackParamList } from './src/navigation/types';
 import { ArticleScreen } from './src/screens/ArticleScreen';
 import { FrontScreen } from './src/screens/FrontScreen';
 import { hydrateAppState } from './src/state/appState';
+import { hydrateFrontCache } from './src/state/frontCache';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-  // No page may become ready before the saved app state is loaded (see `hydrateAppState`).
+  // No page may become ready before the saved app state is loaded (see `hydrateAppState`). The front screen also
+  // starts from its saved height.
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
-    void hydrateAppState().then(() => setHydrated(true));
+    void Promise.all([hydrateAppState(), hydrateFrontCache()]).then(() => setHydrated(true));
   }, []);
 
   if (!hydrated) return null;

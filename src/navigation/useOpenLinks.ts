@@ -9,6 +9,8 @@ import { articlePathOf, createOpenGate, routeOf } from './links';
 import type { RootStackParamList } from './types';
 
 export type OpenLinks = {
+  /** An article path the app made itself (the Recently read strip). Through the same gate as the page's links. */
+  openArticle: (path: string) => void;
   /** A link the page tried to follow (`onLeavePage`): an article gets a screen, anything else the OS. */
   openUrl: (url: string) => void;
   /** The page's `openArticle` message. `path` is untrusted: only an article path on our server opens a screen. */
@@ -58,5 +60,5 @@ export function useOpenLinks(): OpenLinks {
     [openArticle],
   );
 
-  return { openUrl, openArticleMessage };
+  return { openArticle, openUrl, openArticleMessage };
 }
