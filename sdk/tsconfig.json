@@ -1,0 +1,15 @@
+{
+  // Vendor code, used unchanged. It is written for plain `strict`, not the app's extra flags, so it is its own
+  // project: the app type-checks against its emitted declarations instead of its source.
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "../.tsbuild/sdk",
+    "types": []
+  },
+  "include": ["tracker.ts"]
+}
