@@ -10,6 +10,12 @@ describe('routeOf', () => {
     expect(routeOf(`${SERVER_URL}/article/2#middle`)).toEqual({ kind: 'article', path: '/article/2' });
   });
 
+  it("opens a saved copy's article links (`/article/2` resolved against a file) as screens", () => {
+    expect(routeOf('file:///article/2?ref=related')).toEqual({ kind: 'article', path: '/article/2?ref=related' });
+    expect(routeOf('file://host/article/2')).toEqual({ kind: 'external', url: 'file://host/article/2' });
+    expect(routeOf('file:///data/saved/1/other.html')).toEqual({ kind: 'external', url: 'file:///data/saved/1/other.html' });
+  });
+
   it('hands everything else to the operating system', () => {
     for (const url of [
       `${partnerHost}/article/9`, // looks like an article, but another host

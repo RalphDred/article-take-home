@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Alert, type LayoutChangeEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { RecentlyReadStrip } from '../components/RecentlyReadStrip';
 import { useConsentedUrl } from '../consent/useConsentedUrl';
@@ -51,7 +51,7 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
       headerTintColor: palette.text,
       headerShadowVisible: true,
       headerRight: () => (
-        <Pressable accessibilityRole="button" hitSlop={8} onPress={showSavedPlaceholder}>
+        <Pressable accessibilityRole="button" hitSlop={8} onPress={() => navigation.navigate('Saved')}>
           <Text style={[styles.headerButton, { color: palette.action }]}>Saved</Text>
         </Pressable>
       ),
@@ -180,10 +180,6 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
 
 /** One screen view per loaded document: a pull to refresh, a retry or the consent reload is a new one. */
 const trackFrontView = () => tracking.trackScreenView({ name: 'front' });
-
-function showSavedPlaceholder() {
-  Alert.alert('Saved articles', 'Reading offline is not built yet.');
-}
 
 const styles = StyleSheet.create({
   headerButton: { fontSize: 16, fontWeight: '600' },

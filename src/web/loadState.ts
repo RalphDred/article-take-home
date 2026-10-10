@@ -12,7 +12,8 @@ export const READY_TIMEOUT_MS = 15_000;
 export type LoadFailure =
   | { kind: 'timeout' } // the page never sent `ready`
   | { kind: 'network'; description: string } // the document could not be fetched (server or device offline)
-  | { kind: 'http'; status: number };
+  | { kind: 'http'; status: number }
+  | { kind: 'savedCopy'; description: string }; // a saved copy's page could not be read from disk
 
 export type LoadState =
   /** No URL yet: the app does not know the consent string (or that there is none). */
@@ -68,6 +69,9 @@ export const documentOf = (url: string): string => {
 };
 
 export const sameDocument = (a: string, b: string): boolean => documentOf(a) === documentOf(b);
+
+/** A saved copy's page, on the device, rather than a page on the server. */
+export const isFileUrl = (url: string): boolean => /^file:/i.test(url);
 
 /**
  * Whether a network change should retry a page on its error state: only when the device comes back online, not

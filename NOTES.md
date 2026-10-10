@@ -145,7 +145,42 @@ the text. Then the app would not depend on the page's class names.
 
 ## Part 3: saved copies
 
-_To do (Phase 11, or a description if it is cut)._
+Built (`src/offline/`). The download rules live in a pure module (`library.ts`) behind a small file-system interface,
+so they are tested against an in-memory disk. `expoSavedFs.ts` is the `expo-file-system` side.
+
+- **Where:** two folders in the app's documents, on one volume. `saved/` holds only complete copies, one folder each
+  (`<id>-<version>-<unique>/index.html`, `media/…`, the manifest's paths). `saved-tmp/` is where downloads happen.
+- **Complete or not at all:** every file is downloaded into the job's own folder in `saved-tmp/`, then a small record
+  (`.copy.json`: id, title, version, when saved) is written last, then the folder is moved into `saved/` with one
+  rename. A failure, a cancel or a crash leaves nothing in `saved/`. `saved-tmp/` is deleted at every launch, so a
+  download cut short by the app being killed leaves nothing behind either. Manifest paths are untrusted and become
+  file names, so they are checked (relative, no `..`, no hidden names) and a bad manifest is refused as a whole.
+- **The truth for "saved":** the file system. A folder in `saved/` with a valid record is a saved copy, and nothing
+  else is. The in-memory list is built by scanning at launch (which also drops junk, keeps the newest copy per
+  article and enforces the limit) and only changes after the disk has. Removing a copy deletes its record first, so
+  it stops being saved at once, then its folder. A folder that a screen is still showing stays until that screen
+  closes. The Saved screen measures file count and bytes on disk each time it is shown.
+- **Downloads:** one per article (a second tap does nothing), different articles in parallel, three files at a time.
+  A failed file is retried after 1 s and 3 s. Then the reader gets an alert and the job folder is deleted. Cancel
+  aborts the transfers and deletes the folder. Stalls end through the platform's socket timeout (OkHttp's 10 s on
+  Android). A size different from the manifest is only logged, because the CDN's photos may not match byte for byte.
+- **Limit:** five. Saving a sixth removes the one *saved* longest ago, as the README says (my plan said "least
+  recently opened"; I followed the README). An update keeps the original save time.
+- **Opening:** an article that is saved opens from its copy, online or not, with no consent wait and no fragment.
+  Android reads `index.html` from disk and loads it with the copy's folder as base URL and file access on. iOS loads
+  the file URL with read access to `saved/`. In a copy, `/article/2` resolves to `file:///article/2`, which the link
+  router treats as an article link. The same read detection, screen view and app state apply.
+- **Updates:** opening a saved copy fetches the manifest. A different version is saved in the background as a new
+  copy. The screen keeps the copy it opened with, and a banner offers "Show it", which reloads the screen from the new
+  copy (a new document, but the same screen, so no second read). The old copy's record goes at once and its folder
+  when the screen lets go. A failed update leaves the old copy as it was.
+- **Verified on Android (Pixel 8 emulator, Android 16):** save (progress 1/2 → Saved), then with the server set to
+  Unreachable the article opens from disk, with `source: saved copy`, its image loaded, `insets at start: yes` and
+  every app-state counter at ×1. The Saved screen lists it with version, size and save time, and the folder total, while
+  the front page is unreachable. "Publish a new version" → the banner → revision 1, with the old folder gone from
+  disk. "Cut off every one midway" → three attempts at `map.svg`, the alert, and nothing in `saved/` or `saved-tmp/`
+  (checked with `adb`). App killed mid-download → `saved-tmp/` gone after the next launch. Cancel and the limit of
+  five are covered by unit tests only.
 
 ## iOS and Android: what was verified
 

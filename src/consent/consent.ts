@@ -9,7 +9,7 @@
 // for pages and the tracker, but the logs and NOTES.md keep them apart, and nothing can be both "given" and "asking".
 
 import { assertNever } from '../util/assertNever';
-import { documentOf, type LoadState } from '../web/loadState';
+import { documentOf, isFileUrl, type LoadState } from '../web/loadState';
 
 /** Pages wait this long for the first answer, then load without consent. */
 export const CONSENT_GATE_MS = 5_000;
@@ -112,11 +112,12 @@ export function consentInUrl(url: string): string | null {
  * The one exception to "consent that arrives while a page is open does not reload it": a page whose current document
  * was loaded with no consent string at all reloads once when one is available (`newestUrl` carries it), so its ads
  * can load. A page that already has a string, even an older one, keeps it until its next load. A page on the error
- * state is left alone: its next retry uses the newest URL anyway.
+ * state is left alone: its next retry uses the newest URL anyway. A saved copy never uses the consent string.
  */
 export function needsConsentReload(state: LoadState, newestUrl: string | null): boolean {
   if (newestUrl === null || consentInUrl(newestUrl) === null) return false;
   if (state.status !== 'loading' && state.status !== 'ready') return false;
+  if (isFileUrl(state.url)) return false;
 
   return consentInUrl(state.url) === null;
 }

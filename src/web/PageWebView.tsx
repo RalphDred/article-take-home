@@ -24,7 +24,7 @@ import { APP_CONTEXT } from '../config';
 import { tracking } from '../tracking/appTracking';
 import { assertNever } from '../util/assertNever';
 import { beforeContentScript, START_READ_DETECTOR_SCRIPT } from './injected';
-import { type LoadFailure, type LoadState, sameDocument } from './loadState';
+import { isFileUrl, type LoadFailure, type LoadState, sameDocument } from './loadState';
 import { type Insets, type PageKind, type PageMessage, parseInbound, PROTOCOL_VERSION } from './protocol';
 import { useAppStateSync, useInsetsSync } from './useAppStateSync';
 import { LOADS_DOCUMENT_ITSELF, useDocumentHtml } from './useDocumentHtml';
@@ -44,6 +44,8 @@ type Props = {
   url: string | null;
   /** Articles only: set as `window.appInsets` before the page starts. */
   insets?: Insets;
+  /** For a saved copy (a `file:` URL): the folder its page may read files from. Nothing on disk otherwise. */
+  fileAccessUrl?: string;
   /** Once per loaded document, on its first `ready`. */
   onReady?: (loadId: number) => void;
   onPageMessage?: (message: PageEvent) => void;
@@ -92,6 +94,7 @@ export function PageWebView({
   page,
   url,
   insets,
+  fileAccessUrl,
   onReady,
   onPageMessage,
   onLeavePage,
@@ -306,6 +309,12 @@ export function PageWebView({
     return html === null ? null : { html, baseUrl: documentUrl };
   }, [documentUrl, html]);
 
+  // A saved copy loads its photos and map from its folder: Android needs file access switched on, iOS the folder.
+  const fileAccess =
+    documentUrl !== null && isFileUrl(documentUrl) && fileAccessUrl !== undefined
+      ? { allowFileAccess: true, allowingReadAccessToURL: fileAccessUrl }
+      : {};
+
   const overlayStyle =
     statusAreaHeight === undefined ? styles.overlay : [styles.overlay, styles.overlayAtTop, { height: statusAreaHeight }];
 
@@ -316,6 +325,7 @@ export function PageWebView({
       source={source}
       style={state.status === 'ready' ? styles.page : styles.hidden}
       originWhitelist={['*']}
+      {...fileAccess}
       injectedJavaScriptBeforeContentLoaded={injected}
       onMessage={handleMessage}
       onError={handleError}
@@ -383,6 +393,8 @@ function describeFailure(failure: LoadFailure): string {
       return 'The server could not be reached. It retries by itself when the device is back online.';
     case 'http':
       return `The server answered with an error (${failure.status}).`;
+    case 'savedCopy':
+      return 'The saved copy could not be opened.';
     default:
       return assertNever(failure, 'load failure');
   }

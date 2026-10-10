@@ -1,8 +1,9 @@
+import { File } from 'expo-file-system';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { injectIntoHtml } from './injected';
-import { documentOf, type LoadFailure, type LoadState } from './loadState';
+import { documentOf, isFileUrl, type LoadFailure, type LoadState } from './loadState';
 
 /** See `injected.ts`: Android cannot run a script before the page's own unless it is part of the document. */
 export const LOADS_DOCUMENT_ITSELF = Platform.OS === 'android';
@@ -14,7 +15,8 @@ export type DocumentHtml = { loadId: number; html: string };
  * then given the HTML with the page's URL as its base, so the page keeps its own origin, query string and fragment.
  *
  * Fetch failures end the load the same way `onError` / `onHttpError` do for a URL load. The ready timeout keeps
- * running during the fetch, so a server that never answers still ends on the error state.
+ * running during the fetch, so a server that never answers still ends on the error state. A saved copy (a `file:`
+ * URL) is read from disk instead, with its folder as the base, so its photos and map load from there.
  */
 export function useDocumentHtml(
   state: LoadState,
@@ -35,13 +37,27 @@ export function useDocumentHtml(
 
     const abort = new AbortController();
     const script = latestScript.current;
+    const show = (html: string) => {
+      if (!abort.signal.aborted) setLoaded({ loadId, html: injectIntoHtml(html, script) });
+    };
+
+    // A saved copy is read from disk: the file without the query string the page URL carries.
+    if (isFileUrl(url)) {
+      new File(documentOf(url).replace(/\?.*$/, ''))
+        .text()
+        .then(show)
+        .catch((error: unknown) => {
+          if (!abort.signal.aborted) fail(loadId, { kind: 'savedCopy', description: String(error) });
+        });
+
+      return () => abort.abort();
+    }
 
     fetch(documentOf(url), { signal: abort.signal, headers: { 'cache-control': 'no-cache' } })
       .then(async response => {
         if (!response.ok) return fail(loadId, { kind: 'http', status: response.status });
 
-        const html = await response.text();
-        if (!abort.signal.aborted) setLoaded({ loadId, html: injectIntoHtml(html, script) });
+        show(await response.text());
       })
       .catch((error: unknown) => {
         if (!abort.signal.aborted) fail(loadId, { kind: 'network', description: String(error) });

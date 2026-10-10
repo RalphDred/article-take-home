@@ -2,10 +2,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FONT_SCALE, useAppState } from '../state/appState';
 import type { Palette } from '../ui/palette';
+import { SaveControl } from './SaveControl';
 
 type Props = { articleId: string | null; palette: Palette };
 
-/** Font size − and +, the light/dark switch and the bookmark star. Each tap is one change to the app state. */
+/**
+ * Font size − and +, the light/dark switch and the bookmark star (each tap is one change to the app state), and the
+ * save control.
+ */
 export function ArticleControls({ articleId, palette }: Props) {
   const fontScale = useAppState(state => state.fontScale);
   const theme = useAppState(state => state.theme);
@@ -43,6 +47,7 @@ export function ArticleControls({ articleId, palette }: Props) {
           onPress={() => toggleBookmark(articleId)}
         />
       )}
+      {articleId !== null && <SaveControl articleId={articleId} palette={palette} />}
     </View>
   );
 }

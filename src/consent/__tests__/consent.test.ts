@@ -236,6 +236,12 @@ describe('consent that arrives or changes later', () => {
 
     expect(loadToStart(failed, `${FRONT}#consent=cs1-ab`)).toBeNull();
   });
+
+  it('never reloads a saved copy for consent: it does not use the consent string', () => {
+    const saved = loadReducer(initialLoadState, { type: 'load', url: 'file:///data/saved/1-abc/index.html' });
+
+    expect(loadToStart(saved, 'http://server/article/1#consent=cs1-ab')).toBeNull();
+  });
 });
 
 describe('the consent fragment', () => {

@@ -6,8 +6,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { startConsent } from './src/consent/consentService';
 import type { RootStackParamList } from './src/navigation/types';
+import { savedLibrary } from './src/offline/savedLibrary';
 import { ArticleScreen } from './src/screens/ArticleScreen';
 import { FrontScreen } from './src/screens/FrontScreen';
+import { SavedScreen } from './src/screens/SavedScreen';
 import { hydrateAppState, useAppState } from './src/state/appState';
 import { hydrateFrontCache } from './src/state/frontCache';
 import { startTrackingOnConsent } from './src/tracking/appTracking';
@@ -16,10 +18,10 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   // No page may become ready before the saved app state is loaded (see `hydrateAppState`). The front screen also
-  // starts from its saved height.
+  // starts from its saved height, and an article opens from its saved copy, so the copies on disk are read first.
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
-    void Promise.all([hydrateAppState(), hydrateFrontCache()]).then(() => setHydrated(true));
+    void Promise.all([hydrateAppState(), hydrateFrontCache(), savedLibrary.hydrate()]).then(() => setHydrated(true));
   }, []);
 
   // At launch, not after hydration: the five seconds the pages may wait for consent start now. The tracker is created
@@ -42,6 +44,7 @@ export default function App() {
         <Stack.Navigator>
           <Stack.Screen name="Front" component={FrontScreen} options={{ title: 'News' }} />
           <Stack.Screen name="Article" component={ArticleScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Saved" component={SavedScreen} options={{ title: 'Saved' }} />
         </Stack.Navigator>
       </NavigationContainer>
       <ThemedStatusBar />

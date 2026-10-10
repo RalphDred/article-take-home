@@ -1,14 +1,18 @@
 import { SERVER_URL } from '../config';
 
 // React Native's `URL` does not implement `pathname` or `search`, so URLs are split by hand.
-const ARTICLE_URL = /^(https?:\/\/[^/?#]+)(\/article\/[^/?#]+(?:\?[^#]*)?)(?:#.*)?$/i;
+const ARTICLE_URL = /^(https?:\/\/[^/?#]+|file:\/\/)(\/article\/[^/?#]+(?:\?[^#]*)?)(?:#.*)?$/i;
 
-/** The path (with its query string) of an article on our server, or null for any other URL. */
+/**
+ * The path (with its query string) of an article on our server, or null for any other URL. A saved copy is a file,
+ * so its links to `/article/2?ref=related` arrive as `file:///article/2?ref=related`: articles too.
+ */
 export function articlePathOf(url: string): string | null {
   const match = ARTICLE_URL.exec(url);
-  if (!match || match[1]?.toLowerCase() !== SERVER_URL.toLowerCase()) return null;
+  const origin = match?.[1]?.toLowerCase();
+  if (origin === undefined || (origin !== 'file://' && origin !== SERVER_URL.toLowerCase())) return null;
 
-  return match[2] ?? null;
+  return match?.[2] ?? null;
 }
 
 const ARTICLE_PATH = /^\/article\/([^/?#]+)/;
