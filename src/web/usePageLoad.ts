@@ -1,5 +1,6 @@
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useSyncExternalStore } from 'react';
+import { AppState } from 'react-native';
 
 import { loadToStart } from '../consent/consent';
 import {
@@ -51,15 +52,19 @@ export function usePageLoad(url: string | null): PageLoad {
     dispatch({ type: 'load', url: next });
   }, [url, state]);
 
-  // A page that never sends `ready` ends on the error state, not on an endless spinner.
+  // A page that never sends `ready` ends on the error state, not on an endless spinner. The time only counts in the
+  // foreground: Android does not start a web view's renderer while the app is in the background, so a load started
+  // there (a rebuild after the content process was killed) would otherwise time out before the reader comes back.
+  // A load still going on return gets the whole timeout again.
   const loadingId = state.status === 'loading' ? state.loadId : null;
+  const inForeground = useInForeground();
   useEffect(() => {
-    if (loadingId === null) return;
+    if (loadingId === null || !inForeground) return;
 
     const timer = setTimeout(() => fail(loadingId, { kind: 'timeout' }), READY_TIMEOUT_MS);
 
     return () => clearTimeout(timer);
-  }, [loadingId, fail]);
+  }, [loadingId, inForeground, fail]);
 
   // Back online after being offline, while on the error state: retry by itself.
   useEffect(() => {
@@ -73,4 +78,14 @@ export function usePageLoad(url: string | null): PageLoad {
   }, [reload]);
 
   return { state, reload, ready, fail };
+}
+
+const subscribeToAppState = (onChange: () => void) => {
+  const subscription = AppState.addEventListener('change', onChange);
+  return () => subscription.remove();
+};
+const isAppActive = () => AppState.currentState === 'active';
+
+function useInForeground(): boolean {
+  return useSyncExternalStore(subscribeToAppState, isAppActive);
 }
