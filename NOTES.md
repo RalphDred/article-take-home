@@ -91,8 +91,8 @@ the fixture server.
   article screen. The "Syndication partner" link opens the browser, and so does the article's "Tide tables" link
   (`target="_blank"`) once. "Jump" and the contents links still scroll in place with no spinner.
 
-- Front page "Jump to" links (Android emulator, Pixel 8, Android 16): "More stories" puts its heading at the top of
-  the visible area, "Test pages" stops at the end of the scroll view with the footer in view, no spinner either way.
+- Front page "Jump to" links (on the S24, and on an Android 16 Pixel 8 emulator): "More stories" puts its heading at
+  the top of the visible area, "Test pages" stops at the end of the scroll view with the footer in view, no spinner either way.
   Not yet checked with the Recently read strip showing (nothing is marked read before Phase 8).
 
 **Not yet verified on iOS.** This changes when the iPad runs the app.
