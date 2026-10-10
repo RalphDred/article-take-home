@@ -10,3 +10,10 @@ export function articlePathOf(url: string): string | null {
 
   return match[2] ?? null;
 }
+
+const ARTICLE_PATH = /^\/article\/([^/?#]+)/;
+
+/** The article id in an article path (`/article/2?ref=front` → `2`), or null for any other path. */
+export function articleIdOf(path: string): string | null {
+  return ARTICLE_PATH.exec(path)?.[1] ?? null;
+}
