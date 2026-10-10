@@ -5,6 +5,7 @@ import type {
   ShouldStartLoadRequest,
   WebViewErrorEvent,
   WebViewHttpErrorEvent,
+  WebViewOpenWindowEvent,
   WebViewSource,
 } from 'react-native-webview/lib/WebViewTypes';
 
@@ -183,6 +184,12 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
     [documentUrl],
   );
 
+  // `target="_blank"` and `window.open`. Without this handler Android loads the link into an invisible second web view
+  // (the tap does nothing), and iOS loads it in this one, asking `handleShouldStart` twice (two browser opens).
+  const handleOpenWindow = useCallback((event: WebViewOpenWindowEvent) => {
+    handlers.current.onLeavePage(event.nativeEvent.targetUrl);
+  }, []);
+
   const injected = useMemo(
     () => beforeContentScript(insets ? { appContext: APP_CONTEXT, appInsets: insets } : { appContext: APP_CONTEXT }),
     [insets],
@@ -213,6 +220,7 @@ export function PageWebView({ page, url, insets, onReady, onPageMessage, onTrack
           onError={handleError}
           onHttpError={handleHttpError}
           onShouldStartLoadWithRequest={handleShouldStart}
+          onOpenWindow={handleOpenWindow}
           onScroll={handleScroll}
           onContentProcessDidTerminate={rebuild}
           onRenderProcessGone={rebuild}

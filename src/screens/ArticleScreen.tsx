@@ -1,11 +1,12 @@
 import { useCallback, useLayoutEffect, useMemo } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArticleControls } from '../components/ArticleControls';
 import { pageUrl } from '../config';
-import { articleIdOf, articlePathOf } from '../navigation/links';
+import { articleIdOf } from '../navigation/links';
 import type { ScreenProps } from '../navigation/types';
+import { useOpenLinks } from '../navigation/useOpenLinks';
 import { useAppState } from '../state/appState';
 import { assertNever } from '../util/assertNever';
 import { type PageEvent, PageWebView } from '../web/PageWebView';
@@ -25,20 +26,13 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
     navigation.setOptions({ headerRight: () => <ArticleControls articleId={articleId} /> });
   }, [navigation, articleId]);
 
-  const openUrl = useCallback(
-    (target: string) => {
-      const articlePath = articlePathOf(target);
-      if (articlePath !== null) navigation.push('Article', { path: articlePath });
-      else void Linking.openURL(target);
-    },
-    [navigation],
-  );
+  const { openUrl, openArticleMessage } = useOpenLinks();
 
   const handlePageMessage = useCallback(
     (message: PageEvent) => {
       switch (message.type) {
         case 'openArticle':
-          navigation.push('Article', { path: message.path });
+          openArticleMessage(message.path);
           return;
         case 'toggleBookmark':
           // The page's star sends a tap, like the header's. The page redraws its star from `app:bookmarks`.
@@ -50,7 +44,7 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
           assertNever(message, 'page message');
       }
     },
-    [navigation],
+    [openArticleMessage],
   );
 
   return (

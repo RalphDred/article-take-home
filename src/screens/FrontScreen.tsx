@@ -1,29 +1,21 @@
 import { useCallback } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { pageUrl } from '../config';
-import { articlePathOf } from '../navigation/links';
-import type { ScreenProps } from '../navigation/types';
+import { useOpenLinks } from '../navigation/useOpenLinks';
 import { type PageEvent, PageWebView } from '../web/PageWebView';
 
 const FRONT_URL = pageUrl('/front');
 
 // Phase 2: the front page fills the screen. The scroll view, strip, footer and height come in Phase 5.
-export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
-  const openUrl = useCallback(
-    (url: string) => {
-      const path = articlePathOf(url);
-      if (path !== null) navigation.push('Article', { path });
-      else void Linking.openURL(url);
-    },
-    [navigation],
-  );
+export function FrontScreen() {
+  const { openUrl, openArticleMessage } = useOpenLinks();
 
   const handlePageMessage = useCallback(
     (message: PageEvent) => {
-      if (message.type === 'openArticle') navigation.push('Article', { path: message.path });
+      if (message.type === 'openArticle') openArticleMessage(message.path);
     },
-    [navigation],
+    [openArticleMessage],
   );
 
   return (
