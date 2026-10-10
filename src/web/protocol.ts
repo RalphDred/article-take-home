@@ -56,6 +56,10 @@ const pageMessageSchema = z.discriminatedUnion('type', [
     /** CSS pixels from the top of the document to the top of the element. */
     top: z.number().nonnegative(),
   }),
+  // Also the app's own (`READ_DETECTOR_SCRIPT`), on articles: the last line of the text has been on screen, clear of
+  // the app's chrome; or the page has no element the app recognises as its text. The protocol has neither (NOTES.md).
+  z.object({ type: z.literal('app:endOfText') }),
+  z.object({ type: z.literal('app:endOfTextMissing') }),
 ]);
 
 export type PageMessage = z.infer<typeof pageMessageSchema>;
@@ -67,6 +71,8 @@ const PAGE_MESSAGE_TYPES: ReadonlySet<string> = new Set<PageMessageType>([
   'toggleBookmark',
   'openArticle',
   'app:anchor',
+  'app:endOfText',
+  'app:endOfTextMissing',
 ]);
 
 // The web tracker's messages carry `command` instead of `type`. Only the commands the SDK understands are kept, with

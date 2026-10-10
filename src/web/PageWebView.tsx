@@ -22,7 +22,7 @@ import type {
 
 import { APP_CONTEXT } from '../config';
 import { assertNever } from '../util/assertNever';
-import { beforeContentScript } from './injected';
+import { beforeContentScript, START_READ_DETECTOR_SCRIPT } from './injected';
 import { type LoadFailure, type LoadState, sameDocument } from './loadState';
 import { type Insets, type PageKind, type PageMessage, parseInbound, PROTOCOL_VERSION, type TrackerCommand } from './protocol';
 import { useAppStateSync, useInsetsSync } from './useAppStateSync';
@@ -61,6 +61,11 @@ type Props = {
    * loading state. `refreshIndicatorOffset` moves Android's spinner below a header that floats over the page.
    */
   pullToRefresh?: boolean;
+  /**
+   * Articles: report when the last line of the text has been on screen (`READ_DETECTOR_SCRIPT`), as
+   * `app:endOfText` through `onPageMessage`. Watching starts once the page is ready and shown.
+   */
+  readDetection?: boolean;
   refreshIndicatorOffset?: number;
   /**
    * How much of the web view, from its top, the loading and error states cover. All of it by default. The front
@@ -94,6 +99,7 @@ export function PageWebView({
   onLoadStateChange,
   scrollEnabled = true,
   pullToRefresh = false,
+  readDetection = false,
   refreshIndicatorOffset,
   statusAreaHeight,
   style,
@@ -163,6 +169,11 @@ export function PageWebView({
     restoreScrollY.current = null;
     if (y !== null && y > 0) inject(`window.scrollTo(0, ${Math.round(y)});true;`);
   }, [readyLoadId, inject]);
+
+  // The page is shown from `ready` on, so only from then can the reader see the end of its text.
+  useEffect(() => {
+    if (readyLoadId !== null && readDetection) inject(START_READ_DETECTOR_SCRIPT);
+  }, [readyLoadId, readDetection, inject]);
 
   // Typed by the one field it reads: the library's own scroll event types disagree with each other.
   const handleScroll = useCallback(
@@ -279,8 +290,9 @@ export function PageWebView({
     () =>
       beforeContentScript(insets ? { appContext: APP_CONTEXT, appInsets: insets } : { appContext: APP_CONTEXT }, {
         nativeAnchors: !scrollEnabled,
+        readDetector: readDetection,
       }),
-    [insets, scrollEnabled],
+    [insets, scrollEnabled, readDetection],
   );
 
   // Android: the document with the script written into it (see `injected.ts`). iOS: the URL itself.

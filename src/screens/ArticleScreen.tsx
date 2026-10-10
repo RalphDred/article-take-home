@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,6 +7,7 @@ import { pageUrl } from '../config';
 import { articleIdOf } from '../navigation/links';
 import type { ScreenProps } from '../navigation/types';
 import { useOpenLinks } from '../navigation/useOpenLinks';
+import { createReadCounter } from '../reading/readCounter';
 import { useAppState } from '../state/appState';
 import { paletteOf } from '../ui/palette';
 import { assertNever } from '../util/assertNever';
@@ -34,6 +35,9 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
 
   const { openUrl, openArticleMessage } = useOpenLinks();
 
+  // One counter per screen: a refresh of this screen does not count again, a new screen does.
+  const [countRead] = useState(() => createReadCounter(id => useAppState.getState().markRead(id)));
+
   const handlePageMessage = useCallback(
     (message: PageEvent) => {
       switch (message.type) {
@@ -50,11 +54,18 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
           // Only sent where the page does not scroll itself. An article scrolls itself, so its anchors just work.
           console.warn(`[article] ignored app:anchor for #${message.id}`);
           return;
+        case 'app:endOfText':
+          if (articleId !== null) countRead(articleId);
+          return;
+        case 'app:endOfTextMissing':
+          // Loud on purpose: the web team changed the markup the read detection depends on, and no read is counted.
+          console.error(`[article] ${path}: no .articlecomponent.text p found, reads cannot be detected`);
+          return;
         default:
           assertNever(message, 'page message');
       }
     },
-    [openArticleMessage],
+    [openArticleMessage, articleId, countRead, path],
   );
 
   return (
@@ -64,6 +75,7 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
         url={url}
         insets={insets}
         pullToRefresh
+        readDetection
         refreshIndicatorOffset={insets.top}
         onLeavePage={openUrl}
         onPageMessage={handlePageMessage}

@@ -63,7 +63,31 @@ routing). The screens only decide the layout around it.
 
 ## Finding the end of the article text
 
-_To do (Phase 8)._
+The app injects its own detector (`READ_DETECTOR_SCRIPT` in `src/web/injected.ts`). It does not read the status box
+or the page's own analytics.
+
+- **The end** is the bottom edge of the last `p` in `.articlecomponent.text`, the same anchor the web team's own
+  end-of-text analytics uses. The ask box, related links, "More from the newsroom" and the status box are all outside
+  that element, so none of them can count.
+- **Read** = that edge has been between the top inset (header) and the bottom inset (safe area). That is the last
+  line on screen and clear of the app's chrome. A last line that only ever sat under the header does not count, so
+  jumping to "Related" does not count either.
+- **When it checks:** only once the page is ready and shown (the app calls `start()`), then on scroll, on resize and
+  when the page's size changes (`ResizeObserver` on `body`: the late map, the ask box, "More", a font size change),
+  at most once a frame. The paragraph is looked up again on every check, so text that moves or changes still
+  counts. It reports `app:endOfText` once per document. I planned an `IntersectionObserver` first, but it fires on
+  ratio thresholds, which cannot express "the bottom edge is visible" for a paragraph taller than the screen (large
+  font). So it measures instead.
+- **Fails loudly:** a page with no matching element posts `app:endOfTextMissing` once, and the app logs it as an
+  error (a red box in development).
+- **Once per screen** (`src/reading/readCounter.ts`): each article screen has its own counter. A pull to refresh or
+  a rebuild is the same screen and does not count again. Opening the article again is a new screen and counts again.
+- **Verified on Android (Pixel 8 emulator):** the app's read and the page's own "end of text seen" arrive in the same
+  50 ms, and the front page gets `app:read` once and shows the article in the strip.
+
+**What I would ask the web team for:** a protocol message, `{ type: 'endOfText' }`, posted by the page when its own
+check fires (it already has that check), or at least a stable `data-article-text-end` marker on the last element of
+the text. Then the app would not depend on the page's class names.
 
 ## Part 3: saved copies
 

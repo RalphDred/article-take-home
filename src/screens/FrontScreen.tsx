@@ -122,6 +122,11 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
           // Only articles have a bookmark button.
           console.warn(`[front] ignored toggleBookmark for ${message.articleId}`);
           return;
+        case 'app:endOfText':
+        case 'app:endOfTextMissing':
+          // Only articles run the read detection.
+          console.warn(`[front] ignored ${message.type}`);
+          return;
         default:
           assertNever(message, 'page message');
       }

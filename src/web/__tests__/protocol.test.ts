@@ -51,6 +51,14 @@ describe('parseInbound', () => {
       });
     });
 
+    it("parses the app's own read detection messages", () => {
+      expect(parseInbound(json({ type: 'app:endOfText' }))).toEqual({ kind: 'page', message: { type: 'app:endOfText' } });
+      expect(parseInbound(json({ type: 'app:endOfTextMissing' }))).toEqual({
+        kind: 'page',
+        message: { type: 'app:endOfTextMissing' },
+      });
+    });
+
     it('drops unknown fields from protocol messages', () => {
       expect(parseInbound(json({ type: 'height', value: 10, extra: true }))).toEqual({
         kind: 'page',

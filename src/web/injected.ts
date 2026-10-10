@@ -22,16 +22,108 @@ const literal = (value: unknown): string => JSON.stringify(value).replace(/</g, 
 
 /**
  * Sets the globals the pages read when they start. With `nativeAnchors`, also adds `NATIVE_ANCHOR_SCRIPT`, for a page
- * that does not scroll itself.
+ * that does not scroll itself. With `readDetector`, adds `READ_DETECTOR_SCRIPT` (articles), after `appInsets`.
  */
-export function beforeContentScript({ appContext, appInsets }: PageGlobals, { nativeAnchors = false } = {}): string {
+export function beforeContentScript(
+  { appContext, appInsets }: PageGlobals,
+  { nativeAnchors = false, readDetector = false } = {},
+): string {
   const lines = [`window.appContext = ${literal(appContext)};`];
   if (appInsets) lines.push(`window.appInsets = ${literal(appInsets)};`);
   if (nativeAnchors) lines.push(NATIVE_ANCHOR_SCRIPT);
+  if (readDetector) lines.push(READ_DETECTOR_SCRIPT);
   lines.push('true;');
 
   return lines.join('\n');
 }
+
+/**
+ * Finds when the last line of an article's text has been on screen, clear of the app's chrome (README, "Reading").
+ * The page does not say where its text ends, so this depends on its DOM: the last paragraph of
+ * `.articlecomponent.text`, the selector the web team's own end-of-text analytics uses. The ask box, the related links
+ * and "More from the newsroom" sit outside that element, and so does the status box. NOTES.md asks the web team for
+ * a real contract instead.
+ *
+ * Installed before the page starts, but only watching once the app calls `start()` (`START_READ_DETECTOR_SCRIPT`),
+ * when the page is ready and shown: until then the reader cannot see it. Then it checks on every scroll, resize and
+ * change of the page's size (late photos, the ask box, "More", a font size change), at most once a frame, and reports
+ * `{ type: 'app:endOfText' }` once per document. The paragraph is looked up again each time, so text that changes
+ * after the start still counts. No match at all is reported once as `app:endOfTextMissing`, so it cannot fail
+ * silently. ES5, for older web views. On Android the script can run twice (written into the document and injected),
+ * so it installs itself once.
+ */
+export const READ_DETECTOR_SCRIPT = `(function () {
+  if (window.__newsAppReadDetector) return;
+
+  var insets = { top: 0, bottom: 0 };
+  var started = false;
+  var reported = false;
+  var missingReported = false;
+  var pending = false;
+
+  function useInsets(value) {
+    if (value && typeof value.top === 'number' && typeof value.bottom === 'number') {
+      insets = { top: value.top, bottom: value.bottom };
+    }
+  }
+
+  function post(message) {
+    if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(message));
+  }
+
+  function lastTextLine() {
+    var paragraphs = document.querySelectorAll('.articlecomponent.text p');
+    return paragraphs.length ? paragraphs[paragraphs.length - 1] : null;
+  }
+
+  function check() {
+    pending = false;
+    if (!started || reported) return;
+
+    var last = lastTextLine();
+    if (!last) {
+      if (!missingReported) post({ type: 'app:endOfTextMissing' });
+      missingReported = true;
+      return;
+    }
+
+    // The bottom of the last paragraph is its last line: on screen between the header and the bottom inset.
+    var bounds = last.getBoundingClientRect();
+    var visibleBottom = window.innerHeight - insets.bottom;
+    if (bounds.height <= 0 || bounds.bottom > visibleBottom + 1 || bounds.bottom < insets.top) return;
+
+    reported = true;
+    post({ type: 'app:endOfText' });
+  }
+
+  function schedule() {
+    if (pending || !started || reported) return;
+    pending = true;
+    if (window.requestAnimationFrame) window.requestAnimationFrame(check);
+    else setTimeout(check, 16);
+  }
+
+  useInsets(window.appInsets);
+  window.addEventListener('app:insets', function (event) {
+    useInsets(event.detail);
+    schedule();
+  });
+
+  window.__newsAppReadDetector = {
+    start: function () {
+      if (started) return;
+      started = true;
+      window.addEventListener('scroll', schedule, { passive: true });
+      window.addEventListener('resize', schedule);
+      if (window.ResizeObserver && document.body) new window.ResizeObserver(schedule).observe(document.body);
+      check();
+    },
+  };
+})();`;
+
+/** Starts `READ_DETECTOR_SCRIPT` on the ready, visible page. Does nothing on a page without it. */
+export const START_READ_DETECTOR_SCRIPT =
+  'if (window.__newsAppReadDetector) window.__newsAppReadDetector.start();true;';
 
 /**
  * For the front page, which is exactly as tall as its content and does not scroll: an in-page `#section` link there
