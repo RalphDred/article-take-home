@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { startConsent } from './src/consent/consentService';
 import type { RootStackParamList } from './src/navigation/types';
 import { ArticleScreen } from './src/screens/ArticleScreen';
 import { FrontScreen } from './src/screens/FrontScreen';
@@ -19,6 +20,9 @@ export default function App() {
   useEffect(() => {
     void Promise.all([hydrateAppState(), hydrateFrontCache()]).then(() => setHydrated(true));
   }, []);
+
+  // At launch, not after hydration: the five seconds the pages may wait for consent start now.
+  useEffect(() => startConsent(), []);
 
   if (!hydrated) return null;
 

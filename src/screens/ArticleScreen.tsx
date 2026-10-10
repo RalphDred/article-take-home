@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ARTICLE_HEADER_BAR_HEIGHT, ArticleHeader } from '../components/ArticleHeader';
+import { useConsentedUrl } from '../consent/useConsentedUrl';
 import { pageUrl } from '../config';
 import { articleIdOf } from '../navigation/links';
 import type { ScreenProps } from '../navigation/types';
@@ -25,7 +26,8 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
   const theme = useAppState(state => state.theme);
   const palette = paletteOf(theme);
 
-  const url = useMemo(() => pageUrl(path), [path]);
+  // Null while the app waits for consent, then with the newest consent string.
+  const url = useConsentedUrl(useMemo(() => pageUrl(path), [path]));
   const articleId = useMemo(() => articleIdOf(path), [path]);
   const insets = useMemo<Insets>(
     // Whole CSS pixels, rounded up so nothing hides under a fraction of the header.

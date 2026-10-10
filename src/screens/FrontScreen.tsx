@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Alert, type LayoutChangeEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { RecentlyReadStrip } from '../components/RecentlyReadStrip';
+import { useConsentedUrl } from '../consent/useConsentedUrl';
 import { APP_BUILD, APP_VERSION, pageUrl } from '../config';
 import type { ScreenProps } from '../navigation/types';
 import { useOpenLinks } from '../navigation/useOpenLinks';
@@ -31,6 +32,8 @@ const MIN_STATUS_AREA = 240;
  */
 export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
   const { openArticle, openUrl, openArticleMessage } = useOpenLinks();
+  // Null while the app waits for consent, then with the newest consent string.
+  const frontUrl = useConsentedUrl(FRONT_URL);
   const page = useRef<PageWebViewHandle>(null);
   const scrollView = useRef<ScrollView>(null);
 
@@ -155,7 +158,7 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
       <PageWebView
         ref={page}
         page="front"
-        url={FRONT_URL}
+        url={frontUrl}
         scrollEnabled={false}
         statusAreaHeight={statusAreaHeight}
         style={{ flex: 0, height: frameHeight }}

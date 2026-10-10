@@ -1,6 +1,7 @@
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 
+import { loadToStart } from '../consent/consent';
 import {
   initialLoadState,
   type LoadFailure,
@@ -23,7 +24,8 @@ export type PageLoad = {
 /**
  * Drives `loadReducer` for one web view. `url` is null while the app waits for consent; the first non-null value
  * starts the first load. A later change of `url` does not reload by itself (consent that changes while a page is
- * open applies to the next load), but every load uses the newest value.
+ * open applies to the next load), except the one reload of a page loaded without any consent string. Every load
+ * uses the newest value.
  */
 export function usePageLoad(url: string | null): PageLoad {
   const [state, dispatch] = useReducer(loadReducer, initialLoadState);
@@ -39,10 +41,15 @@ export function usePageLoad(url: string | null): PageLoad {
   const ready = useCallback((loadId: number) => dispatch({ type: 'ready', loadId }), []);
   const fail = useCallback((loadId: number, failure: LoadFailure) => dispatch({ type: 'failed', loadId, failure }), []);
 
-  // The first load, as soon as the URL is known.
+  // The first load, as soon as the URL is known. And the one reload for consent: a document loaded with no consent
+  // string reloads once when one is available (`needsConsentReload`). After that it has one, so it never reloads again.
   useEffect(() => {
-    if (url !== null && state.status === 'waitingForConsent') dispatch({ type: 'load', url });
-  }, [url, state.status]);
+    const next = loadToStart(state, url);
+    if (next === null) return;
+
+    if (state.status !== 'waitingForConsent') console.info(`[page] loaded without consent, loading again with it: ${next}`);
+    dispatch({ type: 'load', url: next });
+  }, [url, state]);
 
   // A page that never sends `ready` ends on the error state, not on an endless spinner.
   const loadingId = state.status === 'loading' ? state.loadId : null;

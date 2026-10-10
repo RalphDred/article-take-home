@@ -24,7 +24,27 @@ written, and every event says which load it belongs to (`loadId`). Events for an
 - **Back online** (NetInfo reports offline, then online) while on the error state → retry by itself. Only that
   transition retries: an unreachable server while the device is online would otherwise retry in a loop.
 
-_Consent: to do (Phase 9)._
+**Consent** (`src/consent/consent.ts`, a pure reducer, `consentService.ts` for the requests) is its own state:
+`asking → timedOut | failed | none | given(value)`. `failed` (we do not know) and `none` (the reader has not chosen)
+behave the same, since the page loads without a string and no tracker exists, but the logs keep them apart.
+
+- `/consent` is asked at launch and on every return to the foreground. Pages wait only while `asking`: the first
+  answer, a failure, or five seconds, whichever comes first. The request keeps running after the five seconds (it is
+  given up at 30 s), and a late answer still counts. Answers that arrive out of order are dropped if older than one
+  already applied. The newest answer wins (a `null` after a string means the string is withdrawn for later loads). A
+  failure never overwrites an answer.
+- Every load builds its URL from the newest state (`withConsent`). A change while a page is open does not reload it.
+  The one exception (`needsConsentReload`): a page whose current document was loaded with no string at all reloads
+  once when one is available. After that it has one, so "never again" needs no extra flag. A page on its error state
+  is left alone, because its retry picks up the newest URL anyway.
+- **Why wait up to five seconds and then reload once?** Always waiting makes a hanging consent service a blank app.
+  Always loading at once means almost every cold start shows no ads and then reloads under the reader's eyes. Five
+  seconds covers most answers (the fixture answers within 0–8 s), so most pages load once with consent. The reload is
+  limited to the case where the page has no ads at all and the reader has barely started. A reload once the reader
+  is reading a page with ads would cost more than it gains, so changed strings wait for the next load.
+- Verified on Android (Pixel 8 emulator): "never answer" → `/front` loads at +5.0 s with no fragment. Then "reader
+  has chosen" and back to the foreground: one `/consent`, one reload with `#consent=cs1-…` and the ad, and every
+  status box counter at ×1. "Reader changes their choice" plus a foreground: the new string arrives, no reload.
 
 ## How the two page layouts share code
 
