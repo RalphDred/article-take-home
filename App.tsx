@@ -10,6 +10,7 @@ import { ArticleScreen } from './src/screens/ArticleScreen';
 import { FrontScreen } from './src/screens/FrontScreen';
 import { hydrateAppState, useAppState } from './src/state/appState';
 import { hydrateFrontCache } from './src/state/frontCache';
+import { startTrackingOnConsent } from './src/tracking/appTracking';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -21,8 +22,17 @@ export default function App() {
     void Promise.all([hydrateAppState(), hydrateFrontCache()]).then(() => setHydrated(true));
   }, []);
 
-  // At launch, not after hydration: the five seconds the pages may wait for consent start now.
-  useEffect(() => startConsent(), []);
+  // At launch, not after hydration: the five seconds the pages may wait for consent start now. The tracker is created
+  // the moment consent is a string; events from before wait in `tracking`.
+  useEffect(() => {
+    const stopTracking = startTrackingOnConsent();
+    const stopConsent = startConsent();
+
+    return () => {
+      stopConsent();
+      stopTracking();
+    };
+  }, []);
 
   if (!hydrated) return null;
 

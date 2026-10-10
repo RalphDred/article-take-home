@@ -4,7 +4,41 @@
 
 ## How events reach the collector
 
-_To do (Phase 10)._
+All events go through one pipeline (`src/tracking/tracking.ts`), and the vendor SDK is used unchanged.
+
+- **App events:** a screen view on every page's `ready` (`front`, or `article` + id; a reload, retry, consent reload
+  or rebuild is a new document and a new view), and the read event (`article_read`, `{ articleId }`) once per
+  article screen.
+- **Web events:** every message from a page goes through the protocol parser. Those it recognises as the web
+  tracker's (`command` = `trackPageView` / `trackScreenView` / `trackSelfDescribingEvent`, with an `event` object) are
+  passed on as the page's original string, so unknown fields survive, to the SDK's `getWebViewCallback()`.
+  Everything else is protocol or noise, which the SDK would ignore anyway. I filter first rather than hand it
+  everything because of an SDK bug (below).
+- **Before consent:** nothing reaches the SDK at all. App and web events wait in one buffer, in the order they
+  happened (web events as their raw string). The SDK's callback drops web events while no tracker exists, so it
+  cannot be the buffer. The buffer keeps the newest 500 and counts what it drops. That only matters for a reader who
+  never chooses, and 500 is also the SDK's own queue size.
+- **Consent:** the tracker (`news-app`, the server as endpoint, app version, platform) is created the first time
+  `/consent` answers with a string. A failure, a `null` or the five-second timeout never creates it. Then the buffer
+  goes to the SDK once, in order, and later events go straight through. `newTracker` throws on a duplicate
+  namespace, so after a Fast Refresh the existing tracker is reused.
+- Verified on Android: with consent hanging, the front page and an article sent nothing to `/collect`. After "reader
+  has chosen" and a return to the foreground, one batch carried all six events (the four from before consent, then
+  the consent reload's), in order, none flagged. A read arrived within a second of the page's own "end of text seen".
+
+**SDK issues (not fixed, vendor code):**
+
+- `getWebViewCallback` checks `command in WEB_VIEW_COMMANDS` on a plain object, so `"toString"`, `"constructor"` or
+  `"__proto__"` pass. The event is queued with a function as its kind, which `JSON.stringify` drops. The collector
+  then rejects the whole batch (400), and the SDK retries that same first batch forever, so every later event is stuck
+  behind it. One stray message from any script on a page is enough (checked against the SDK in Node). The app's
+  filter only lets the three real commands through.
+- Events get their timestamp (`ts`) when they reach the SDK, so events that waited for consent carry the time
+  consent arrived, not when they happened. There is no way to pass the original time. I would ask the vendor for an
+  optional timestamp, or for a "paused until consent" mode in the SDK itself.
+- Once created, a tracker cannot be removed. If the reader withdraws consent (`null` after a string), later page
+  loads carry no fragment, but the tracker keeps sending. Handling withdrawal properly needs an SDK change, or the app
+  buffering (or dropping) again. I left that out.
 
 ## Loading state and the consent rule
 

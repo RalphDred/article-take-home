@@ -8,6 +8,7 @@ import type { ScreenProps } from '../navigation/types';
 import { useOpenLinks } from '../navigation/useOpenLinks';
 import { recentlyRead, useAppState } from '../state/appState';
 import { useFrontCache } from '../state/frontCache';
+import { tracking } from '../tracking/appTracking';
 import { paletteOf } from '../ui/palette';
 import { assertNever } from '../util/assertNever';
 import { anchorScrollY } from '../web/anchorScroll';
@@ -162,6 +163,7 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
         scrollEnabled={false}
         statusAreaHeight={statusAreaHeight}
         style={{ flex: 0, height: frameHeight }}
+        onReady={trackFrontView}
         onLoadStateChange={handleLoadState}
         onLeavePage={openUrl}
         onPageMessage={handlePageMessage}
@@ -175,6 +177,9 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
     </ScrollView>
   );
 }
+
+/** One screen view per loaded document: a pull to refresh, a retry or the consent reload is a new one. */
+const trackFrontView = () => tracking.trackScreenView({ name: 'front' });
 
 function showSavedPlaceholder() {
   Alert.alert('Saved articles', 'Reading offline is not built yet.');

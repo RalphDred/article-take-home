@@ -10,6 +10,7 @@ import type { ScreenProps } from '../navigation/types';
 import { useOpenLinks } from '../navigation/useOpenLinks';
 import { createReadCounter } from '../reading/readCounter';
 import { useAppState } from '../state/appState';
+import { tracking } from '../tracking/appTracking';
 import { paletteOf } from '../ui/palette';
 import { assertNever } from '../util/assertNever';
 import { type PageEvent, PageWebView } from '../web/PageWebView';
@@ -38,7 +39,17 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
   const { openUrl, openArticleMessage } = useOpenLinks();
 
   // One counter per screen: a refresh of this screen does not count again, a new screen does.
-  const [countRead] = useState(() => createReadCounter(id => useAppState.getState().markRead(id)));
+  const [countRead] = useState(() =>
+    createReadCounter(id => {
+      useAppState.getState().markRead(id);
+      tracking.trackArticleRead(id);
+    }),
+  );
+
+  // One screen view per loaded document: a reload, a retry or a rebuild is a new one.
+  const trackScreenView = useCallback(() => {
+    if (articleId !== null) tracking.trackScreenView({ name: 'article', id: articleId });
+  }, [articleId]);
 
   const handlePageMessage = useCallback(
     (message: PageEvent) => {
@@ -78,6 +89,7 @@ export function ArticleScreen({ navigation, route }: ScreenProps<'Article'>) {
         insets={insets}
         pullToRefresh
         readDetection
+        onReady={trackScreenView}
         refreshIndicatorOffset={insets.top}
         onLeavePage={openUrl}
         onPageMessage={handlePageMessage}

@@ -21,10 +21,11 @@ import type {
 } from 'react-native-webview/lib/WebViewTypes';
 
 import { APP_CONTEXT } from '../config';
+import { tracking } from '../tracking/appTracking';
 import { assertNever } from '../util/assertNever';
 import { beforeContentScript, START_READ_DETECTOR_SCRIPT } from './injected';
 import { type LoadFailure, type LoadState, sameDocument } from './loadState';
-import { type Insets, type PageKind, type PageMessage, parseInbound, PROTOCOL_VERSION, type TrackerCommand } from './protocol';
+import { type Insets, type PageKind, type PageMessage, parseInbound, PROTOCOL_VERSION } from './protocol';
 import { useAppStateSync, useInsetsSync } from './useAppStateSync';
 import { LOADS_DOCUMENT_ITSELF, useDocumentHtml } from './useDocumentHtml';
 import { usePageLoad } from './usePageLoad';
@@ -46,7 +47,6 @@ type Props = {
   /** Once per loaded document, on its first `ready`. */
   onReady?: (loadId: number) => void;
   onPageMessage?: (message: PageEvent) => void;
-  onTrackerMessage?: (raw: string, command: TrackerCommand) => void;
   /** The page tried to navigate to another document. The web view stays where it is; the caller decides. */
   onLeavePage: (url: string) => void;
   /** Each new load state: a new load, ready, or an error. */
@@ -94,7 +94,6 @@ export function PageWebView({
   insets,
   onReady,
   onPageMessage,
-  onTrackerMessage,
   onLeavePage,
   onLoadStateChange,
   scrollEnabled = true,
@@ -119,8 +118,8 @@ export function PageWebView({
 
   useImperativeHandle(ref, () => ({ reload: reloadByReader }), [reloadByReader]);
 
-  const handlers = useRef({ onReady, onPageMessage, onTrackerMessage, onLeavePage, onLoadStateChange });
-  handlers.current = { onReady, onPageMessage, onTrackerMessage, onLeavePage, onLoadStateChange };
+  const handlers = useRef({ onReady, onPageMessage, onLeavePage, onLoadStateChange });
+  handlers.current = { onReady, onPageMessage, onLeavePage, onLoadStateChange };
 
   useEffect(() => {
     handlers.current.onLoadStateChange?.(state);
@@ -214,7 +213,8 @@ export function PageWebView({
         case 'ignored':
           return;
         case 'tracker':
-          handlers.current.onTrackerMessage?.(inbound.raw, inbound.command);
+          // Every page hands its web tracker's events to the app's tracker; they wait there until consent.
+          tracking.trackWebMessage(inbound.raw, inbound.command);
           return;
         case 'page': {
           const { message } = inbound;
