@@ -1,15 +1,25 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from './src/navigation/types';
 import { ArticleScreen } from './src/screens/ArticleScreen';
 import { FrontScreen } from './src/screens/FrontScreen';
+import { hydrateAppState } from './src/state/appState';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  // No page may become ready before the saved app state is loaded (see `hydrateAppState`).
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    void hydrateAppState().then(() => setHydrated(true));
+  }, []);
+
+  if (!hydrated) return null;
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>
