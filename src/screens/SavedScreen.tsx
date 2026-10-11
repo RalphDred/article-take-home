@@ -30,7 +30,8 @@ export function SavedScreen({ navigation }: ScreenProps<'Saved'>) {
 
   const focused = useIsFocused();
   const [sizes, setSizes] = useState<FolderSizes | null>(null);
-  // Measured again when the copies change, and again once a removed copy's files are gone.
+  // Measured again when the copies change, once a removed copy's files are gone, and as downloads move on or end (a
+  // download leaves the list only after its files are discarded, so a cancel or failure is seen to leave nothing).
   useEffect(() => {
     if (!focused) return;
 
@@ -45,7 +46,7 @@ export function SavedScreen({ navigation }: ScreenProps<'Saved'>) {
     return () => {
       current = false;
     };
-  }, [focused, copies, folderRemovals]);
+  }, [focused, copies, folderRemovals, downloads]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -103,7 +104,8 @@ export function SavedScreen({ navigation }: ScreenProps<'Saved'>) {
       <Text style={[styles.footer, { color: palette.muted, borderTopColor: palette.rule }]}>
         {sizes === null
           ? 'Measuring the saved-articles folder…'
-          : `Saved-articles folder on this device: ${sizes.files} ${sizes.files === 1 ? 'file' : 'files'}, ${formatBytes(sizes.bytes)}.`}
+          : `Saved-articles folder on this device: ${countFiles(sizes.files)}, ${formatBytes(sizes.bytes)}. ` +
+            `Unfinished downloads: ${countFiles(sizes.downloading.files)}, ${formatBytes(sizes.downloading.bytes)}.`}
       </Text>
     </ScrollView>
   );
@@ -123,6 +125,8 @@ function confirmDeleteAll() {
     { text: 'Delete all', style: 'destructive', onPress: () => void savedLibrary.removeAll() },
   ]);
 }
+
+const countFiles = (files: number): string => `${files} ${files === 1 ? 'file' : 'files'}`;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

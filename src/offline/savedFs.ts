@@ -6,7 +6,13 @@ export type ScannedFolder = { uri: string; record: CopyRecord | null };
 /** One download's own folder, outside the saved-articles folder until it is complete. */
 export type Job = { readonly uri: string };
 
-export type FolderSizes = { files: number; bytes: number; byFolder: Readonly<Record<string, number>> };
+export type FolderSizes = {
+  files: number;
+  bytes: number;
+  byFolder: Readonly<Record<string, number>>;
+  /** What downloads have written so far in `saved-tmp/`. Nothing once they are done, failed or cancelled. */
+  downloading: { files: number; bytes: number };
+};
 
 /**
  * The file operations behind saved copies (`expoSavedFs.ts` on a device, a fake in the tests).
@@ -32,7 +38,7 @@ export type SavedFs = {
   unmark: (folderUri: string) => Promise<void>;
   /** Deletes a folder (or a stray file) in the saved-articles folder. */
   remove: (folderUri: string) => Promise<void>;
-  /** Files and bytes in the saved-articles folder, counted on disk, in total and per folder. */
+  /** Files and bytes in the saved-articles folder, counted on disk, in total and per folder, and in downloads. */
   measure: () => Promise<FolderSizes>;
 };
 

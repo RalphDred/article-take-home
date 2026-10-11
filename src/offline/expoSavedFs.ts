@@ -98,10 +98,18 @@ export const expoSavedFs: SavedFs = {
   },
 
   async measure(): Promise<FolderSizes> {
+    const downloading = { files: 0, bytes: 0 };
+    if (tmpRoot.exists) {
+      walk(tmpRoot, file => {
+        downloading.files += 1;
+        downloading.bytes += file.size;
+      });
+    }
+
     const byFolder: Record<string, number> = {};
     let files = 0;
     let bytes = 0;
-    if (!savedRoot.exists) return { files, bytes, byFolder };
+    if (!savedRoot.exists) return { files, bytes, byFolder, downloading };
 
     savedRoot.list().forEach(entry => {
       let folderBytes = 0;
@@ -115,6 +123,6 @@ export const expoSavedFs: SavedFs = {
       byFolder[normalized(entry.uri)] = folderBytes;
     });
 
-    return { files, bytes, byFolder };
+    return { files, bytes, byFolder, downloading };
   },
 };

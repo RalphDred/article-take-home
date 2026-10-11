@@ -62,7 +62,12 @@ function memoryFs(respond: (url: string, signal: AbortSignal) => Promise<number>
         files += folder.files.size;
         byFolder[uri] = [...folder.files.values()].reduce((sum, bytes) => sum + bytes, 0);
       });
-      return { files, bytes: Object.values(byFolder).reduce((sum, bytes) => sum + bytes, 0), byFolder };
+      const downloading = { files: 0, bytes: 0 };
+      tmp.forEach(folder => {
+        downloading.files += folder.files.size;
+        downloading.bytes += [...folder.files.values()].reduce((sum, bytes) => sum + bytes, 0);
+      });
+      return { files, bytes: Object.values(byFolder).reduce((sum, bytes) => sum + bytes, 0), byFolder, downloading };
     },
   };
 
