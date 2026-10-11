@@ -1,6 +1,7 @@
 # Running the app
 
-The app is in Expo (SDK 57) and runs in Expo Go, with no native build. Design notes are in [NOTES.md](NOTES.md).
+The app is in Expo (SDK 57) and runs in Expo Go, with no native build. Design notes are in [NOTES.md](NOTES.md), and
+the screen recordings in [video/](video/): [Android](video/Android-recording.mp4) and [iPad](video/Ipad_recording.mp4).
 
 You need Node 18 or newer, and Expo Go for SDK 57 on the device or emulator. If the store version of Expo Go has
 moved on to a later SDK, install the SDK 57 build from https://expo.dev/go.
@@ -14,8 +15,9 @@ npx expo start              # in a second terminal
 Then open the project in Expo Go. On a phone, scan the QR code that `expo start` prints (the phone must be on the same
 Wi-Fi). On an Android emulator, press `a`. The app looks for the fixture server on port 8787 of the machine Metro
 runs on, so nothing needs configuring. On Windows, allow Node through the firewall on private networks, or a phone
-cannot reach port 8787. To use another server, start Metro with
-`EXPO_PUBLIC_SERVER_URL=http://<host>:8787 npx expo start`.
+cannot reach port 8787. If the computer has more than one network address (a VPN, say) and the QR code points at one
+the phone cannot reach, start Metro with `REACT_NATIVE_PACKAGER_HOSTNAME=<Wi-Fi address> npx expo start`. To use
+another server, start Metro with `EXPO_PUBLIC_SERVER_URL=http://<host>:8787 npx expo start`.
 
 ```sh
 npm test                    # Jest, pure modules
