@@ -35,6 +35,11 @@ export type SavedState = {
   copies: Readonly<Record<string, SavedCopy>>;
   /** At most one download per article. */
   downloads: Readonly<Record<string, Download>>;
+  /**
+   * Goes up each time a folder has left the saved-articles folder. A copy stops being saved before its files are
+   * gone, so anything that measures the folder measures again when this changes.
+   */
+  folderRemovals: number;
 };
 
 export type LibraryDeps = {
@@ -146,7 +151,7 @@ export function createSavedLibrary({
   concurrency = DOWNLOAD_CONCURRENCY,
   limit = SAVED_LIMIT,
 }: LibraryDeps): SavedLibrary {
-  const store = createStore<SavedState>(() => ({ copies: {}, downloads: {} }));
+  const store = createStore<SavedState>(() => ({ copies: {}, downloads: {}, folderRemovals: 0 }));
   const running = new Map<string, Running>();
   const holds = new Map<string, number>();
   /** Removed copies whose folders a screen still shows. */
@@ -159,7 +164,10 @@ export function createSavedLibrary({
     });
 
   const removeFolder = (uri: string) =>
-    fs.remove(uri).catch((error: unknown) => console.warn(`[saved] could not remove ${uri}`, error));
+    fs
+      .remove(uri)
+      .catch((error: unknown) => console.warn(`[saved] could not remove ${uri}`, error))
+      .finally(() => store.setState(state => ({ folderRemovals: state.folderRemovals + 1 })));
 
   /** No longer a saved copy, at once. Its files go now, or when the last screen showing them closes. */
   async function retire(uri: string): Promise<void> {

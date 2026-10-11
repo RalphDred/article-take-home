@@ -1,5 +1,6 @@
-import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, type StyleProp, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 
+import { COMPACT_HEADER_WIDTH, HEADER_MAX_FONT_SCALE } from '../ui/header';
 import type { Palette } from '../ui/palette';
 import { ArticleControls } from './ArticleControls';
 
@@ -20,6 +21,9 @@ type Props = {
  * height itself (`app:insets`), so the title starts just below it.
  */
 export function ArticleHeader({ articleId, palette, safeTop, onBack, style }: Props) {
+  // On a narrow screen (large display zoom) "Back" would push the save control off the edge.
+  const compact = useWindowDimensions().width < COMPACT_HEADER_WIDTH;
+
   return (
     <View
       style={[
@@ -34,9 +38,14 @@ export function ArticleHeader({ articleId, palette, safeTop, onBack, style }: Pr
         accessibilityLabel="Back"
         hitSlop={8}
         onPress={onBack}
-        style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.back, compact && styles.backCompact, pressed && styles.pressed]}
       >
-        <Text style={[styles.backLabel, { color: palette.action }]}>‹ Back</Text>
+        <Text
+          maxFontSizeMultiplier={HEADER_MAX_FONT_SCALE}
+          style={[styles.backLabel, compact && styles.backLabelCompact, { color: palette.action }]}
+        >
+          {compact ? '‹' : '‹ Back'}
+        </Text>
       </Pressable>
       <ArticleControls articleId={articleId} palette={palette} />
     </View>
@@ -53,5 +62,8 @@ const styles = StyleSheet.create({
   },
   back: { height: 40, paddingHorizontal: 8, justifyContent: 'center' },
   backLabel: { fontSize: 17, fontWeight: '500' },
+  // The chevron alone: as large a target as the other controls.
+  backCompact: { minWidth: 40, alignItems: 'center' },
+  backLabelCompact: { fontSize: 28, marginTop: -6 },
   pressed: { opacity: 0.5 },
 });

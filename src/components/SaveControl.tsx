@@ -1,9 +1,14 @@
+import { useRef } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text } from 'react-native';
 
 import { savedLibrary, useSaved } from '../offline/savedLibrary';
+import { HEADER_MAX_FONT_SCALE } from '../ui/header';
 import type { Palette } from '../ui/palette';
 
 type Props = { articleId: string; palette: Palette };
+
+// The cancel control takes Save's place at once, so the second tap of a double tap would land on it.
+const DOUBLE_TAP_MS = 500;
 
 /**
  * Save for offline reading. While the copy downloads it shows its progress, and a tap cancels. Once saved, a tap
@@ -12,6 +17,7 @@ type Props = { articleId: string; palette: Palette };
 export function SaveControl({ articleId, palette }: Props) {
   const saved = useSaved(state => state.copies[articleId] !== undefined);
   const download = useSaved(state => state.downloads[articleId]);
+  const saveTappedAt = useRef(0);
 
   if (download?.kind === 'save') {
     const progress = download.total > 0 ? `${download.done}/${download.total}` : '';
@@ -21,11 +27,15 @@ export function SaveControl({ articleId, palette }: Props) {
         accessibilityRole="button"
         accessibilityLabel={`Saving for offline reading${progress ? `, ${progress} files` : ''}. Cancel`}
         hitSlop={6}
-        onPress={() => savedLibrary.cancel(articleId)}
+        onPress={() => {
+          if (Date.now() - saveTappedAt.current >= DOUBLE_TAP_MS) savedLibrary.cancel(articleId);
+        }}
         style={({ pressed }) => [styles.control, pressed && styles.pressed]}
       >
         <ActivityIndicator size="small" color={palette.text} />
-        <Text style={[styles.progress, { color: palette.muted }]}>{progress || '…'} ✕</Text>
+        <Text maxFontSizeMultiplier={HEADER_MAX_FONT_SCALE} style={[styles.progress, { color: palette.muted }]}>
+          {progress || '…'} ✕
+        </Text>
       </Pressable>
     );
   }
@@ -36,10 +46,19 @@ export function SaveControl({ articleId, palette }: Props) {
       accessibilityLabel={saved ? 'Saved for offline reading. Remove' : 'Save for offline reading'}
       accessibilityState={{ selected: saved }}
       hitSlop={6}
-      onPress={() => (saved ? confirmRemove(articleId) : savedLibrary.save(articleId))}
+      onPress={() => {
+        if (saved) return confirmRemove(articleId);
+        saveTappedAt.current = Date.now();
+        savedLibrary.save(articleId);
+      }}
       style={({ pressed }) => [styles.control, pressed && styles.pressed]}
     >
-      <Text style={[styles.label, { color: saved ? palette.action : palette.text }]}>{saved ? 'Saved' : 'Save'}</Text>
+      <Text
+        maxFontSizeMultiplier={HEADER_MAX_FONT_SCALE}
+        style={[styles.label, { color: saved ? palette.action : palette.text }]}
+      >
+        {saved ? 'Saved' : 'Save'}
+      </Text>
     </Pressable>
   );
 }

@@ -157,7 +157,7 @@ describe('saving', () => {
 
     expect(tmp.size).toBe(0);
     expect(saved.size).toBe(0);
-    expect(library.store.getState()).toEqual({ copies: {}, downloads: {} });
+    expect(library.store.getState()).toEqual({ copies: {}, downloads: {}, folderRemovals: 0 });
     expect(onSaveFailed).not.toHaveBeenCalled();
   });
 
@@ -189,7 +189,7 @@ describe('saving', () => {
     expect(onSaveFailed).toHaveBeenCalledTimes(1);
     expect(tmp.size).toBe(0);
     expect(saved.size).toBe(0);
-    expect(library.store.getState()).toEqual({ copies: {}, downloads: {} });
+    expect(library.store.getState()).toEqual({ copies: {}, downloads: {}, folderRemovals: 0 });
   });
 });
 
@@ -311,11 +311,27 @@ describe('removing', () => {
     await stalled.library.removeAll();
     await settle();
     expect(stalled.tmp.size).toBe(0);
-    expect(stalled.library.store.getState()).toEqual({ copies: {}, downloads: {} });
+    expect(stalled.library.store.getState()).toEqual({ copies: {}, downloads: {}, folderRemovals: 0 });
 
     await library.removeAll();
     expect(saved.size).toBe(0);
     expect(tmp.size).toBe(0);
+  });
+
+  it('counts a removal once its files are gone, so the Saved screen measures the folder without them', async () => {
+    const { library, saved } = setup();
+    library.save('1');
+    library.save('2');
+    await settle();
+
+    const foldersWhenCounted: number[] = [];
+    library.store.subscribe((state, previous) => {
+      if (state.folderRemovals !== previous.folderRemovals) foldersWhenCounted.push(saved.size);
+    });
+    await library.remove('1');
+    await library.remove('2');
+
+    expect(foldersWhenCounted).toEqual([1, 0]);
   });
 });
 

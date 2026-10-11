@@ -21,6 +21,7 @@ export function SavedScreen({ navigation }: ScreenProps<'Saved'>) {
   const palette = paletteOf(useAppState(state => state.theme));
   const copies = useSaved(state => state.copies);
   const downloads = useSaved(state => state.downloads);
+  const folderRemovals = useSaved(state => state.folderRemovals);
   const { openArticle } = useOpenLinks();
 
   const savedList = useMemo(() => Object.values(copies).sort((a, b) => b.savedAt - a.savedAt), [copies]);
@@ -29,6 +30,7 @@ export function SavedScreen({ navigation }: ScreenProps<'Saved'>) {
 
   const focused = useIsFocused();
   const [sizes, setSizes] = useState<FolderSizes | null>(null);
+  // Measured again when the copies change, and again once a removed copy's files are gone.
   useEffect(() => {
     if (!focused) return;
 
@@ -43,7 +45,7 @@ export function SavedScreen({ navigation }: ScreenProps<'Saved'>) {
     return () => {
       current = false;
     };
-  }, [focused, copies]);
+  }, [focused, copies, folderRemovals]);
 
   useLayoutEffect(() => {
     navigation.setOptions({

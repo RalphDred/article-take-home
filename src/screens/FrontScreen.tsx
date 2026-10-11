@@ -171,7 +171,7 @@ export function FrontScreen({ navigation }: ScreenProps<'Front'>) {
       <View style={[styles.footer, { borderTopColor: palette.rule }]}>
         <Text style={[styles.footerTitle, { color: palette.text }]}>NZZ</Text>
         <Text style={[styles.footerText, { color: palette.muted }]}>
-          App {APP_VERSION} ({APP_BUILD}) · Pull down to refresh
+          App {APP_VERSION} ({APP_BUILD}) · Pull down at the top to refresh
         </Text>
       </View>
     </ScrollView>

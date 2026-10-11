@@ -59,12 +59,22 @@ save evicts the copy saved longest ago. Updates download as a new copy, and a ba
 | --- | --- | --- |
 | Android | Galaxy S24 Ultra (physical, Expo Go over Wi-Fi) | Android 16 (One UI 8.5) |
 | Android | Pixel 8 emulator (API 36) | Android 16 |
-| iOS | **not run** | — |
+| iOS | iPad (5th generation) (physical, Expo Go over Wi-Fi) | iPadOS 16.7.16 |
 
-On Android I checked Parts 1–3 against every control-panel case (the limit of five and cancel in unit
-tests only). **iOS is not verified.** The iOS-only paths are written but have never run: document-start globals, pull
-to refresh, `onContentProcessDidTerminate`, file-URL access. **A difference found:** on Android,
-`injectedJavaScriptBeforeContentLoaded` lost the race against the page's inline scripts (`at start: no`), so Android fetches the document and writes the script first in `<head>`.
+On both platforms I checked Parts 1–3 against every control-panel case (on Android, the limit of five in unit tests
+only). **Differences:** on Android, `injectedJavaScriptBeforeContentLoaded` lost the race against the page's inline
+scripts (`at start: no`), so Android fetches the document and writes the script first in `<head>`. iOS runs it at
+document start (`at start: yes`). Pull to refresh on the article is the web view's own on iOS, and a scroll view
+wrapped around it on Android. The iPad reports `deviceType: tablet` and rotates (Expo Go ignores `orientation` on
+iPad). **Found on the iPad, fixed:** a long press previewed links (`allowsLinkPreview` is on by default), and the
+loading state stayed light in dark mode. **Not checked on iOS:** a killed content process. iPadOS kept the page
+alive through three games.
+
+**Found on the S24, fixed:** at the largest font size and screen zoom the article header pushed Save off the edge.
+Its labels now grow at most 1.3×, and below 360 dp Back is only "‹". A quick double tap on Save cancelled the
+download it had just started, because the cancel control takes Save's place. A second tap within 0.5 s is now ignored.
+The Saved screen measured its folder before a deleted copy's files were gone. It now measures again once they are.
+One UI also kept the page alive in the background, so the rebuild was not triggered there either.
 
 ## Content process killed in the background
 
@@ -84,7 +94,8 @@ against an in-memory disk with injected failures. These rules are hard to see on
 
 **SDK bugs (not fixed):** `command in WEB_VIEW_COMMANDS` lets `"toString"` through. The collector then rejects the
 batch, and the SDK retries it forever, blocking all later events. Buffered events are timestamped at consent, and a
-tracker cannot be removed. **Left out:** iOS verification, withdrawn consent, exact scroll restoration after a rebuild.
+tracker cannot be removed. **Left out:** withdrawn consent, exact scroll restoration after a rebuild, and the rebuild
+on iOS (never triggered).
 
 ## Where AI helped, and where it was corrected
 

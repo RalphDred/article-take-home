@@ -21,7 +21,9 @@ import type {
 } from 'react-native-webview/lib/WebViewTypes';
 
 import { APP_CONTEXT } from '../config';
+import { useAppState } from '../state/appState';
 import { tracking } from '../tracking/appTracking';
+import { paletteOf } from '../ui/palette';
 import { assertNever } from '../util/assertNever';
 import { beforeContentScript, START_READ_DETECTOR_SCRIPT } from './injected';
 import { isFileUrl, type LoadFailure, type LoadState, sameDocument } from './loadState';
@@ -315,8 +317,13 @@ export function PageWebView({
       ? { allowFileAccess: true, allowingReadAccessToURL: fileAccessUrl }
       : {};
 
-  const overlayStyle =
-    statusAreaHeight === undefined ? styles.overlay : [styles.overlay, styles.overlayAtTop, { height: statusAreaHeight }];
+  // The loading and error states follow the app's theme, like the screen around them.
+  const palette = paletteOf(useAppState(appState => appState.theme));
+  const overlayStyle = [
+    styles.overlay,
+    { backgroundColor: palette.background },
+    statusAreaHeight === undefined ? null : [styles.overlayAtTop, { height: statusAreaHeight }],
+  ];
 
   const webViewElement = source !== null && state.status !== 'waitingForConsent' && (
     <WebView
@@ -332,6 +339,8 @@ export function PageWebView({
       onHttpError={handleHttpError}
       onShouldStartLoadWithRequest={handleShouldStart}
       onOpenWindow={handleOpenWindow}
+      // iOS previews a link on a long press, loading it outside the app's rules. (On by default in the library.)
+      allowsLinkPreview={false}
       scrollEnabled={scrollEnabled}
       onScroll={handleScroll}
       // iOS: the web view's own refresh control. Its reload is turned into an app-started load (`handleShouldStart`).
@@ -368,15 +377,15 @@ export function PageWebView({
       )}
       {state.status === 'error' ? (
         <View style={overlayStyle}>
-          <Text style={styles.title}>This page could not be loaded</Text>
-          <Text style={styles.detail}>{describeFailure(state.failure)}</Text>
-          <Pressable accessibilityRole="button" onPress={reload} style={styles.retry}>
-            <Text style={styles.retryLabel}>Retry</Text>
+          <Text style={[styles.title, { color: palette.text }]}>This page could not be loaded</Text>
+          <Text style={[styles.detail, { color: palette.muted }]}>{describeFailure(state.failure)}</Text>
+          <Pressable accessibilityRole="button" onPress={reload} style={[styles.retry, { backgroundColor: palette.text }]}>
+            <Text style={[styles.retryLabel, { color: palette.background }]}>Retry</Text>
           </Pressable>
         </View>
       ) : state.status !== 'ready' ? (
         <View style={overlayStyle}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={palette.muted} />
         </View>
       ) : null}
     </View>
@@ -410,14 +419,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    // Opaque, so neither a half-loaded page nor the platform's error page shows through.
-    backgroundColor: '#f2f2f2',
+    // Opaque (the theme's background), so neither a half-loaded page nor the platform's error page shows through.
     gap: 12,
   },
   // Below the status area the web view is still hidden, so only the screen's background shows there.
   overlayAtTop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: undefined },
   title: { fontSize: 17, fontWeight: '600', textAlign: 'center' },
-  detail: { fontSize: 14, color: '#666', textAlign: 'center' },
-  retry: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, backgroundColor: '#1a1a1a' },
-  retryLabel: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  detail: { fontSize: 14, textAlign: 'center' },
+  retry: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  retryLabel: { fontSize: 15, fontWeight: '600' },
 });

@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FONT_SCALE, useAppState } from '../state/appState';
+import { HEADER_MAX_FONT_SCALE } from '../ui/header';
 import type { Palette } from '../ui/palette';
 import { SaveControl } from './SaveControl';
 
@@ -72,7 +73,9 @@ function Control({ label, accessibilityLabel, accessibilityState, color, disable
       onPress={onPress}
       style={({ pressed }) => [styles.control, pressed && styles.pressed, disabled && styles.disabled]}
     >
-      <Text style={[styles.label, { color }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={HEADER_MAX_FONT_SCALE} style={[styles.label, { color }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
